@@ -1,10 +1,10 @@
 import pytest
 from hashlib import blake2b
-from main import littleEndianToInt, getPseudoRandom, get_matrix
+from main import little_endian_to_int, get_pseudo_random, get_matrix
 
 
-def test_littleEndianToInt():
-    assert littleEndianToInt(b"poseidon") == 7957689470423363440
+def test_little_endian_to_int():
+    assert little_endian_to_int(b"poseidon") == 7957689470423363440
 
 
 def test_blake2b_version():
@@ -12,8 +12,8 @@ def test_blake2b_version():
     assert h == 'e57ba154fb2c47811dc1a2369b27e25a44915b4e4ece4eb8ec74850cb78e01b1'
 
 
-def test_getPseudoRandom():
-    assert getPseudoRandom(b"poseidon", 5) == (
+def test_get_pseudo_random():
+    assert get_pseudo_random(b"poseidon", 5) == (
         15824101442726336678493729790213225602337266391839199937743631806357667769936,
         21242663800926259018279473475394539681984199997998092992785924410742632368937,
         7537673755943127760422551293899591957569458436859277585653724494712104093827,

@@ -10,7 +10,7 @@ class Fr(FQ):
     field_modulus = curve_order
 
 
-def littleEndianToInt(_input: bytes) -> int:
+def little_endian_to_int(_input: bytes) -> int:
     result = 0
     for i, byte in enumerate(_input):
         result += byte << (i*8)
@@ -18,11 +18,11 @@ def littleEndianToInt(_input: bytes) -> int:
 
 
 @to_tuple
-def getPseudoRandom(seed: bytes, n: int) -> Tuple[Fr]:
+def get_pseudo_random(seed: bytes, n: int) -> Tuple[Fr]:
     h = seed
     for _ in range(n):
         h = blake2b(h, digest_size=32).digest()
-        yield Fr(littleEndianToInt(h))
+        yield Fr(little_endian_to_int(h))
 
 
 def all_different(_tuple: Tuple[Fr]) -> bool:
@@ -41,12 +41,12 @@ def all_different(_tuple: Tuple[Fr]) -> bool:
 def get_matrix(t: int, seed: bytes) -> Tuple[Tuple[Fr], ...]:
     nonce = 0
     _seed = b''.join([seed,  b'_matrix_', f"{nonce:04d}".encode()])
-    cmatrix = getPseudoRandom(_seed, t*t)
+    cmatrix = get_pseudo_random(_seed, t*t)
     while not all_different(cmatrix):
         nonce += 1
         nonceStr = f"{nonce:04d}" if nonce < 10000 else str(nonce)
         _seed = b''.join([seed,  b'_matrix_', nonceStr])
-        cmatrix = getPseudoRandom(_seed, t*t)
+        cmatrix = get_pseudo_random(_seed, t*t)
     for i in range(t):
         yield tuple(
             Fr(1)/(cmatrix[i]-cmatrix[t+j]) for j in range(t)
@@ -60,13 +60,4 @@ class Poseidon:
     width = 3
 
     def __init__(self):
-        pass
-
-    def getPseudoRandom(self):
-        pass
-
-    def getMatrix(self):
-        pass
-
-    def getConstants(self):
         pass
