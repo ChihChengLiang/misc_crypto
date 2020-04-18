@@ -13,7 +13,7 @@ class Fr(FQ):
 def little_endian_to_int(_input: bytes) -> int:
     result = 0
     for i, byte in enumerate(_input):
-        result += byte << (i*8)
+        result += byte << (i * 8)
     return result
 
 
@@ -40,21 +40,19 @@ def all_different(_tuple: Tuple[Fr]) -> bool:
 @to_tuple
 def get_matrix(t: int, seed: bytes) -> Tuple[Tuple[Fr], ...]:
     nonce = 0
-    _seed = b''.join([seed,  b'_matrix_', f"{nonce:04d}".encode()])
-    cmatrix = get_pseudo_random(_seed, t*t)
+    _seed = b"".join([seed, b"_matrix_", f"{nonce:04d}".encode()])
+    cmatrix = get_pseudo_random(_seed, t * t)
     while not all_different(cmatrix):
         nonce += 1
         nonceStr = f"{nonce:04d}" if nonce < 10000 else str(nonce)
-        _seed = b''.join([seed,  b'_matrix_', nonceStr])
-        cmatrix = get_pseudo_random(_seed, t*t)
+        _seed = b"".join([seed, b"_matrix_", nonceStr])
+        cmatrix = get_pseudo_random(_seed, t * t)
     for i in range(t):
-        yield tuple(
-            Fr(1)/(cmatrix[i]-cmatrix[t+j]) for j in range(t)
-        )
+        yield tuple(Fr(1) / (cmatrix[i] - cmatrix[t + j]) for j in range(t))
 
 
 def get_constants(t: int, seed: bytes, rounds: int):
-    return get_pseudo_random(seed+b"_constants", rounds)
+    return get_pseudo_random(seed + b"_constants", rounds)
 
 
 @to_tuple
@@ -67,7 +65,7 @@ def sigma(a: Fr) -> Fr:
     """
     Raise a to a**5
     """
-    a_2 = a*a
+    a_2 = a * a
     a_4 = a_2 * a_2
     return a * a_4
 
@@ -92,7 +90,7 @@ class Poseidon:
     matrix: Tuple[Tuple[Fr], ...]
     constants: Tuple[Fr]
 
-    def __init__(self, t: int, roundsF: int, roundsP: int, seed=b'poseidon') -> None:
+    def __init__(self, t: int, roundsF: int, roundsP: int, seed=b"poseidon") -> None:
         self.t = t
         self.roundsF = roundsF
         self.roundsP = roundsP
@@ -103,18 +101,20 @@ class Poseidon:
     def hash(self, inputs: Tuple[Fr]):
         len_inputs = len(inputs)
         if len_inputs > self.t:
-            raise ValueError((
-                'Length of inputs should be less than t.'
-                f"Got len(inputs): {len_inputs} "
-                f"t: {self.t}"
-            ))
+            raise ValueError(
+                (
+                    "Length of inputs should be less than t."
+                    f"Got len(inputs): {len_inputs} "
+                    f"t: {self.t}"
+                )
+            )
         if len_inputs == 0:
             raise ValueError("Input shouldn't be empty")
 
         # Initial state is inputs padded with zeros to length t
-        state = tuple(inputs) + (Fr(0), ) * (self.t - len_inputs)
+        state = tuple(inputs) + (Fr(0),) * (self.t - len_inputs)
 
-        halfF = self.roundsF/2
+        halfF = self.roundsF / 2
         for i in range(self.roundsF + self.roundsP):
             state = ark(state, self.constants[i])
             if i < halfF or i >= halfF + self.roundsP:
@@ -122,7 +122,7 @@ class Poseidon:
                 state = tuple(sigma(s) for s in state)
             else:
                 # Partial S-Box layer round
-                state = (sigma(state[0]), ) + state[1:]
+                state = (sigma(state[0]),) + state[1:]
             state = mix(state, self.matrix)
         return state[0]
 
