@@ -18,11 +18,39 @@ def littleEndianToInt(_input: bytes) -> int:
 
 
 @to_tuple
-def getPseudoRandom(seed: bytes, n: int) -> Tuple[int]:
+def getPseudoRandom(seed: bytes, n: int) -> Tuple[Fr]:
     h = seed
     for _ in range(n):
         h = blake2b(h, digest_size=32).digest()
         yield Fr(littleEndianToInt(h))
+
+
+def all_different(_tuple: Tuple[Fr]) -> bool:
+    _list = list(_tuple)
+    for _ in range(len(_tuple)):
+        a = _list.pop()
+        if a == Fr(0):
+            return False
+        for b in _list:
+            if a == b:
+                return False
+    return True
+
+
+@to_tuple
+def get_matrix(t: int, seed: bytes) -> Tuple[Tuple[Fr], ...]:
+    nonce = 0
+    _seed = b''.join([seed,  b'_matrix_', f"{nonce:04d}".encode()])
+    cmatrix = getPseudoRandom(_seed, t*t)
+    while not all_different(cmatrix):
+        nonce += 1
+        nonceStr = f"{nonce:04d}" if nonce < 10000 else str(nonce)
+        _seed = b''.join([seed,  b'_matrix_', nonceStr])
+        cmatrix = getPseudoRandom(_seed, t*t)
+    for i in range(t):
+        yield tuple(
+            Fr(1)/(cmatrix[i]-cmatrix[t+j]) for j in range(t)
+        )
 
 
 class Poseidon:
