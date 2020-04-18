@@ -53,11 +53,78 @@ def get_matrix(t: int, seed: bytes) -> Tuple[Tuple[Fr], ...]:
         )
 
 
-class Poseidon:
-    seed = "poseidon"
-    roundsF = 8
-    roundsP = 57
-    width = 3
+def get_constants(t: int, seed: bytes, rounds: int):
+    return get_pseudo_random(seed+b"_constants", rounds)
 
-    def __init__(self):
-        pass
+
+@to_tuple
+def ark(state: Tuple[Fr], c: Fr) -> Tuple[Fr]:
+    for s in state:
+        yield s + c
+
+
+def sigma(a: Fr) -> Fr:
+    """
+    Raise a to a**5
+    """
+    a_2 = a*a
+    a_4 = a_2 * a_2
+    return a * a_4
+
+
+@to_tuple
+def mix(state: Tuple[Fr], M: Tuple[Tuple[Fr], ...]) -> Tuple[Fr]:
+    """
+    Perform inner product: state' = M * state
+    """
+    for row in range(len(state)):
+        result = Fr(0)
+        for col, s in enumerate(state):
+            result = result + M[row][col] * s
+        yield result
+
+
+class Poseidon:
+    seed: bytes
+    roundsF: int
+    roundsP: int
+    t: int
+    matrix: Tuple[Tuple[Fr], ...]
+    constants: Tuple[Fr]
+
+    def __init__(self, t: int, roundsF: int, roundsP: int, seed=b'poseidon') -> None:
+        self.t = t
+        self.roundsF = roundsF
+        self.roundsP = roundsP
+        self.seed = seed
+        self.matrix = get_matrix(t, seed)
+        self.constants = get_constants(t, seed, roundsF + roundsP)
+
+    def hash(self, inputs: Tuple[Fr]):
+        len_inputs = len(inputs)
+        if len_inputs > self.t:
+            raise ValueError((
+                'Length of inputs should be less than t.'
+                f"Got len(inputs): {len_inputs} "
+                f"t: {self.t}"
+            ))
+        if len_inputs == 0:
+            raise ValueError("Input shouldn't be empty")
+
+        # Initial state is inputs padded with zeros to length t
+        state = tuple(inputs) + (Fr(0), ) * (self.t - len_inputs)
+
+        halfF = self.roundsF/2
+        for i in range(self.roundsF + self.roundsP):
+            state = ark(state, self.constants[i])
+            if i < halfF or i >= halfF + self.roundsP:
+                # Full S-Box layer round
+                state = tuple(sigma(s) for s in state)
+            else:
+                # Partial S-Box layer round
+                state = (sigma(state[0]), ) + state[1:]
+            state = mix(state, self.matrix)
+        return state[0]
+
+
+poseidon_t6 = Poseidon(6, 8, 57).hash

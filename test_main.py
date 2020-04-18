@@ -1,6 +1,6 @@
 import pytest
 from hashlib import blake2b
-from main import little_endian_to_int, get_pseudo_random, get_matrix
+from main import little_endian_to_int, get_pseudo_random, get_matrix, poseidon_t6
 
 
 def test_little_endian_to_int():
@@ -33,3 +33,8 @@ def test_get_matrix():
             18634098492055214324873285470566015538548967469826511946578953323931218028182
         )
     )
+
+
+def test_poseidon():
+    expected = 12242166908188651009877250812424843524687801523336557272219921456462821518061
+    assert poseidon_t6([1, 2]) == expected
