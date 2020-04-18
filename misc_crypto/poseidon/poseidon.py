@@ -2,7 +2,7 @@ from py_ecc.bn128 import curve_order
 from py_ecc.fields import FQ
 from hashlib import blake2b
 from eth_utils import to_tuple
-from typing import Tuple
+from typing import Tuple, Iterator, Sequence
 
 
 # All the algebra of the circuit must be in the Fr Field
@@ -18,14 +18,14 @@ def little_endian_to_int(_input: bytes) -> int:
 
 
 @to_tuple
-def get_pseudo_random(seed: bytes, n: int) -> Tuple[Fr]:
+def get_pseudo_random(seed: bytes, n: int) -> Iterator[Fr]:
     h = seed
     for _ in range(n):
         h = blake2b(h, digest_size=32).digest()
         yield Fr(little_endian_to_int(h))
 
 
-def all_different(_tuple: Tuple[Fr]) -> bool:
+def all_different(_tuple: Sequence[Fr]) -> bool:
     _list = list(_tuple)
     for _ in range(len(_tuple)):
         a = _list.pop()
@@ -38,13 +38,13 @@ def all_different(_tuple: Tuple[Fr]) -> bool:
 
 
 @to_tuple
-def get_matrix(t: int, seed: bytes) -> Tuple[Tuple[Fr], ...]:
+def get_matrix(t: int, seed: bytes) -> Iterator[Tuple[Fr, ...]]:
     nonce = 0
     _seed = b"".join([seed, b"_matrix_", f"{nonce:04d}".encode()])
     cmatrix = get_pseudo_random(_seed, t * t)
     while not all_different(cmatrix):
         nonce += 1
-        nonceStr = f"{nonce:04d}" if nonce < 10000 else str(nonce)
+        nonceStr = f"{nonce:04d}".encode() if nonce < 10000 else bytes(nonce)
         _seed = b"".join([seed, b"_matrix_", nonceStr])
         cmatrix = get_pseudo_random(_seed, t * t)
     for i in range(t):
@@ -56,7 +56,7 @@ def get_constants(t: int, seed: bytes, rounds: int):
 
 
 @to_tuple
-def ark(state: Tuple[Fr], c: Fr) -> Tuple[Fr]:
+def ark(state: Tuple[Fr], c: Fr) -> Iterator[Fr]:
     for s in state:
         yield s + c
 
@@ -71,7 +71,7 @@ def sigma(a: Fr) -> Fr:
 
 
 @to_tuple
-def mix(state: Tuple[Fr], M: Tuple[Tuple[Fr], ...]) -> Tuple[Fr]:
+def mix(state: Tuple[Fr], M: Tuple[Tuple[Fr], ...]) -> Iterator[Fr]:
     """
     Perform inner product: state' = M * state
     """
@@ -87,7 +87,7 @@ class Poseidon:
     roundsF: int
     roundsP: int
     t: int
-    matrix: Tuple[Tuple[Fr], ...]
+    matrix: Tuple[Tuple[Fr, ...], ...]
     constants: Tuple[Fr]
 
     def __init__(self, t: int, roundsF: int, roundsP: int, seed=b"poseidon") -> None:

@@ -1,3 +1,4 @@
+.mypy_cache/
 .python-version
 .pytest_cache/
 .vscode/
