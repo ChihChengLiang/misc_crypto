@@ -5,6 +5,7 @@ from misc_crypto.poseidon import (
     get_pseudo_random,
     get_matrix,
     poseidon_t6,
+    Poseidon,
 )
 
 
@@ -45,3 +46,8 @@ def test_poseidon():
         12242166908188651009877250812424843524687801523336557272219921456462821518061
     )
     assert poseidon_t6([1, 2]) == expected
+
+
+def test_from_elements_length():
+    poseidon_l5 = Poseidon.from_elements_length(5)
+    assert Poseidon(6, 8, 50).hash([1, 2]) == poseidon_l5.hash([1, 2])

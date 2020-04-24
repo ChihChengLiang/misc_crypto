@@ -82,6 +82,31 @@ def mix(state: Tuple[Fr], M: Tuple[Tuple[Fr], ...]) -> Iterator[Fr]:
         yield result
 
 
+def recommend_parameter(elements_length: int) -> Tuple[int, int, int]:
+    """
+    A faster way to get recommended parameters from the result of running parameter_finder.py.
+    """
+    if elements_length < 2:
+        raise ValueError("Number of elements should be at least 2")
+
+    # Poseidon requires 1 width to be reserved for security.
+    t = elements_length + 1
+    roundsF = 8
+    if t == 3:
+        roundsP = 49
+    elif t <= 7:
+        roundsP = 50
+    elif t <= 14:
+        roundsP = 51
+    elif t <= 29:
+        roundsP = 52
+    else:
+        raise ValueError(
+            "Unsupported elements_length, please run parameter_finder.py to get the parameter"
+        )
+    return t, roundsF, roundsP
+
+
 class Poseidon:
     seed: bytes
     roundsF: int
@@ -97,6 +122,14 @@ class Poseidon:
         self.seed = seed
         self.matrix = get_matrix(t, seed)
         self.constants = get_constants(t, seed, roundsF + roundsP)
+
+    @classmethod
+    def from_elements_length(cls, elements_length: int):
+        t, roundsF, roundsP = recommend_parameter(elements_length)
+        return cls(t, roundsF, roundsP)
+
+    def __repr__(self):
+        return f"Poseidon(t={self.t}, roundsF={self.roundsF}, roundsP={self.roundsP}, seed={self.seed})"
 
     def hash(self, inputs: Tuple[Fr]):
         len_inputs = len(inputs)
@@ -127,4 +160,5 @@ class Poseidon:
         return state[0]
 
 
+# This is the circomlib default Poseidon hash function
 poseidon_t6 = Poseidon(6, 8, 57).hash
