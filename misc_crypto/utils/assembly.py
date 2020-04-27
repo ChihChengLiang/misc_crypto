@@ -74,6 +74,10 @@ OPCODES = {
 }
 
 
+def to_big_endian(x: int) -> bytes:
+    return x.to_bytes((x.bit_length() + 7) // 8, "big")
+
+
 class Contract:
     code: List[bytes]
     labels: Dict[str, List[bytes]]
@@ -88,13 +92,14 @@ class Contract:
         if len(self.pending_labels.keys()) > 0:
             raise ValueError(f"Lables not defined: {self.pending_labels.keys()}")
 
-        loader_length = 9  # This is len(loader.code)
         loader = (
             Contract()
             .codesize()
-            .push([loader_length, 0x00])
+            .push(b"\x0b")  # This is len(loader.code) == 11
+            .push(b"\x00")
             .codecopy()
-            .push([len(self.code), 0x00])
+            .push(to_big_endian(len(self.code)))
+            .push(b"\x00")
             .return_()
         )
 
@@ -127,7 +132,7 @@ class Contract:
             if label not in self.pending_labels:
                 self.pending_labels[label] = []
             self.pending_labels[label] += len(self.code)
-            self.push([0x00, 0x00, 0x00])
+            self.push(b"\x00\x00\x00")
 
     def _fill_label(self, label: str) -> None:
         if label not in self.pending_labels:
@@ -162,9 +167,9 @@ class Contract:
         self._fill_label(name)
         return self
 
-    def push(self, data: Sequence[int]):
+    def push(self, data: bytes):
         """
-        Opcode push1 to push32, the length of data determines which opcode to use
+        Opcode push1(0x60) to push32(0x7f), the length of data determines which opcode to use
         """
         len_data = len(data)
         if len_data == 0 or len_data > 32:
@@ -172,7 +177,7 @@ class Contract:
 
         # If the data has length 5, the opcode for push5 is 0x5F + 5
         self.code.append(0x5F + len_data)
-        self.code.extend(data)
+        self.code.extend([d for d in data])
         return self
 
     def dup(self, n: int):
