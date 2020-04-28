@@ -1,5 +1,5 @@
 from eth_utils import encode_hex, decode_hex, is_hex
-from typing import List, Dict, Sequence, Union
+from typing import List, Dict, Sequence, Union, Optional
 
 OPCODES = {
     "stop": 0x00,
@@ -95,21 +95,22 @@ class Contract:
         if len(self.pending_labels.keys()) > 0:
             raise ValueError(f"Lables not defined: {self.pending_labels.keys()}")
 
-        loader = (
-            Contract()
-            .codesize()
-            .push(b"\x0b")  # This is len(loader.code) == 11
-            .push(b"\x00")
-            .codecopy()
-            .push(to_big_endian(len(self.code)))
-            .push(b"\x00")
-            .return_()
-        )
+        set_loader_length = 0
+        loaded_length = 11  # initialize with minium possible len(loader.code)
 
-        if loader_length != len(loader.code):
-            raise ValueError(
-                f"Something wrong, loader_length={loader_length} should equal to len(loader.code)={len(loader.code)}"
+        while set_loader_length != loaded_length:
+            set_loader_length = loaded_length
+            loader = (
+                Contract()
+                .codesize()
+                .push(set_loader_length)
+                .push(b"\x00")
+                .codecopy()
+                .push(len(self.code))
+                .push(b"\x00")
+                .return_()
             )
+            loaded_length = len(loader.code)
 
         return encode_hex(bytes(loader.code + self.code))
 
@@ -134,8 +135,9 @@ class Contract:
         else:
             if label not in self.pending_labels:
                 self.pending_labels[label] = []
-            self.pending_labels[label] += len(self.code)
+            self.pending_labels[label] += [len(self.code)]
             self.push(b"\x00\x00\x00")
+        return self
 
     def _fill_label(self, label: str) -> None:
         if label not in self.pending_labels:
@@ -148,10 +150,9 @@ class Contract:
                 self.code[position + i + 1] = dsti
         del self.pending_labels[label]
 
-    def jmp(self, label: str):
-        if label is None:
-            raise ValueError(f"Invalid label: {label}")
-        self._push_label(label)
+    def jmp(self, label: str = None):
+        if label is not None:
+            self._push_label(label)
         self.code.append(0x56)
         return self
 
