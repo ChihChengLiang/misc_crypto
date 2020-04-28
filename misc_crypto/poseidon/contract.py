@@ -1,52 +1,85 @@
 from misc_crypto.utils.assembly import Contract
 from .poseidon import get_constants, get_matrix, Fr
 from eth_utils import decode_hex
-from py_ecc.bn128 import curve_order
-from typing import Union
+from typing import Union, Tuple
+
+# Note to reviewers:
+# This module contains evm assemply operations.
+# The state of evm stacks are commented to help you reason with the code.
+# https://ethervm.io/ is also very helpful.
+# There's a gotcha though.
+# When we write `state[p]` in comment, we are using the python index, which starts from zero. The first item is state[0]
+# But for the evm stack, the dup1 is duplicating the top of the stack.
 
 
-def to_32bytes(a: Union[int, Fr]):
-    return int(a).to_bytes(32, "big")
+# The number is also the curve order of bn128
+q = Fr.field_modulus
 
 
-def save_matrix(contract, matrix, t):
+def to_32bytes(x: Union[int, Fr]):
+    return int(x).to_bytes(32, "big")
+
+
+def save_matrix(contract: Contract, t: int, matrix):
     for i, row in enumerate(matrix):
         for j, element in enumerate(row):
             (
                 contract.push(to_32bytes(element))
-                .push((1 + i * t + j) * 32)
+                .push((1 + i * t + j) * 32)  # Store in different memory position
                 .mstore()
             )
 
 
-def ark(contract, constants, r, t):
-    contract.push(to_32bytes(constants[r]))  # K, st, q
+def ark(contract: Contract, t: int, c: Fr):
+    # state, q
+    contract.push(to_32bytes(c))
+    # c, state, q
     for i in range(t):
         (
-            contract.dup(1 + t)  # q, K, st, q
-            .dup(1)  # K, q, K, st, q
-            .dup(3 + i)  # st[i], K, q, K, st, q
-            .addmod()  # newSt[i], K, st, q
-            .swap(2 + i)  # xx, K, st, q
+            contract.dup(2 + t)
+            # q, c, state, q
+            .dup(2)
+            # c, q, c, state, q
+            .dup(4 + i)
+            # st[i], c, q, c, state, q
+            .addmod()
+            # newSt[i], c, state, q
+            .swap(2 + i)
+            # _, c, state, q
             .pop()
+            # c, state, q
         )
     contract.pop()
+    # state, q
 
 
-def sigma(contract, p, t):
+def sigma(contract: Contract, t: int, p: int):
     (
-        contract.dup(t)  # sq, q  # q, st, q
-        .dup(1 + p)  # st[p] , q , st, q
-        .dup(1)  # q, st[p] , q , st, q
-        .dup(0)  # q, q, st[p] , q , st, q
-        .dup(2)  # st[p] , q, q, st[p] , q , st, q
-        .dup(0)  # st[p] , st[p] , q, q, st[p] , q , st, q
-        .mulmod()  # st2[p], q, st[p] , q , st, q
-        .dup(0)  # st2[p], st2[p], q, st[p] , q , st, q
+        # state, q
+        contract.dup(t + 1)
+        # q, state, q
+        .dup(2 + p)
+        # state[p] , q , state, q
+        .dup(2)
+        # q, state[p] , q , state, q
+        .dup(1)
+        # q, q, state[p] , q , state, q
+        .dup(3)
+        # state[p] , q, q, state[p] , q , state, q
+        .dup(1)
+        # state[p], state[p], q, q, state[p] , q , state, q
+        .mulmod()
+        # state[p]**2, q, state[p] , q , state, q
+        .dup(1)
+        # state[p]**2, state[p]**2, q, state[p] , q , state, q
         .mulmod()  # st4[p], st[p] , q , st, q
-        .mulmod()  # st5[p], st, q
+        # state[p]**4, state[p] , q , state, q
+        .mulmod()
+        # state[p]**5, state, q
         .swap(1 + p)
-        .pop()  # newst, q
+        # _, new_state, q
+        .pop()
+        # new_state, q
     )
 
 
@@ -56,26 +89,63 @@ def mix(contract, t):
         for j in range(t):
             if j == 0:
                 (
-                    contract.dup(i + t)  # q, newSt, oldSt, q
-                    .push((1 + i * t + j) * 32)
-                    .mload()  # M, q, newSt, oldSt, q
-                    .dup(2 + i + j)  # oldSt[j], M, q, newSt, oldSt, q
-                    .mulmod()  # acc, newSt, oldSt, q
+                    # new_state[i-1...0], old_state[0...t-1], q
+                    contract.dup(i + t + 1)
+                    # q, new_state, old_state, q
+                    .push((1 + i * t + j) * 32).mload()
+                    # Mij, q, new_state, old_state, q
+                    .dup(3 + i + j)
+                    # old_state[j], Mij, q, new_state, old_state, q
+                    .mulmod()  # accumulation, new_state, old_state, q
                 )
             else:
                 (
-                    contract.dup(1 + i + t)  # q, acc, newSt, oldSt, q
-                    .push((1 + i * t + j) * 32)
-                    .mload()  # M, q, acc, newSt, oldSt, q
-                    .dup(3 + i + j)  # oldSt[j], M, q, acc, newSt, oldSt, q
-                    .mulmod()  # aux, acc, newSt, oldSt, q
-                    .dup(2 + i + t)  # q, aux, acc, newSt, oldSt, q
-                    .swap(2)  # acc, aux, q, newSt, oldSt, q
-                    .addmod()  # acc, newSt, oldSt, q
+                    # accumulation, new_state, old_state, q
+                    contract.dup(2 + i + t)
+                    # q, accumulation, new_state, old_state, q
+                    .push((1 + i * t + j) * 32).mload()
+                    # Mij, q, accumulation, new_state, old_state, q
+                    .dup(4 + i + j)
+                    # old_state[j], Mij, q, accumulation, new_state, old_state, q
+                    .mulmod()
+                    # Mij*sj, accumulation, new_state, old_state, q
+                    .dup(3 + i + t)
+                    # q, Mij*sj, accumulation, new_state, old_state, q
+                    .swap(2)
+                    # accumulation, Mij*sj, q, new_state, old_state, q
+                    .addmod()
+                    # new_accumulation, new_state, old_state, q
                 )
+            # The last new_accumulation is the new_state[i + 1]
+
+    # Reverse the new_state and pop out the old_state
+    # new_state[t-1...0], old_state[0...t-1], q
     for i in range(t):
-        contract.swap((t - i) + (t - i - 1)).pop()
+        (
+            # {     t-i items    }, {     t-i items    }, {      i items   }
+            # new_state[t-i-1...0], old_state[0...t-i-1], new_state[t-i...t-1], q
+            contract.swap((t - i) + (t - i - 1))
+            # old_state[t-i], new_state[t-i-2...0], old_state[0...t-1-i], new_state[t-i-1], new_state[t-i...t-1], q
+            .pop()
+        )
+    # Go to position 0
     contract.push(0).mload().jmp()
+
+
+def check_selector(contract: Contract, signature4bytes: str) -> None:
+    """
+    Check if the evm message selects the correct function's 4 bytes signature
+    """
+    (
+        contract.push(b"\x01" + b"\x00" * 28)
+        .push(0)
+        .calldataload()
+        .div()
+        .push(signature4bytes)
+        .eq()
+        .jmpi("start")
+        .invalid()
+    )
 
 
 def create_code(t, roundsF, roundsP, seed):
@@ -83,52 +153,39 @@ def create_code(t, roundsF, roundsP, seed):
     constants = get_constants(t, seed, roundsF + roundsP)
 
     contract = Contract()
-
-    # Check selector
-    (
-        contract.push(b"\x01" + b"\x00" * 28)
-        .push(0)
-        .calldataload()
-        .div()
-        .push("0xc4420fb4")  # poseidon(uint256[])
-        .eq()
-        .jmpi("start")
-        .invalid()
-    )
+    check_selector(contract, "0xc4420fb4")  # poseidon(uint256[])
 
     contract.label("start")
 
-    save_matrix(contract, matrix, t)
+    save_matrix(contract, t, matrix)
 
-    contract.push(to_32bytes(curve_order))  # The number is also the field modulus of Fr
+    # field modulus is always at the bottom of the stack
+    contract.push(to_32bytes(q))
 
-    # Load 6 values from the call data.
+    # Load t values from the call data.
     # The function has a single array param param
     # [Selector (4)] [Pointer (32)][Length (32)] [data1 (32)] ....
-    # We ignore the pointer and the length and just load 6 values to the state
-    # (Stack positions 0-5) If the array is shorter, we just set zeros.
+    # We ignore the pointer and the length and just load t values to the state
+    # (Stack positions 1...t) If the array is shorter, we just set zeros.
     for i in range(t):
-        contract.push(0x44 + (0x20 * (5 - i))).calldataload()
+        contract.push(0x44 + (0x20 * (t - 1 - i))).calldataload()
 
     for i in range(roundsF + roundsP):
-        ark(contract, constants, i, t)
+        ark(contract, t, constants[i])
         if i < roundsF / 2 or i >= roundsP + roundsF / 2:
             for j in range(t):
-                sigma(contract, j, t)
+                sigma(contract, t, j)
         else:
-            sigma(contract, 0, t)
+            sigma(contract, t, 0)
 
         str_label = f"after_mix_{i}"
-        (
-            contract._push_label(str_label)
-            .push(0)
-            .mstore()
-            .jmp("mix")
-            .label(str_label)
-        )
+        (contract._push_label(str_label).push(0).mstore().jmp("mix").label(str_label))
     (
-        contract.push(0)
-        .mstore()  # Save it to position 0
+        contract
+        # Save output to memory position 0
+        .push(0)
+        .mstore()
+        # Return 64 bytes from memory
         .push(0x20)
         .push(0x00)
         .return_()

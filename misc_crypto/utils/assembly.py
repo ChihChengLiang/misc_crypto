@@ -167,7 +167,7 @@ class Contract:
         if name in self.labels:
             raise ValueError(f"Label already defined: {name}")
         self.labels[name] = len(self.code)
-        self.code.append(0x5B)
+        self.code.append(0x5B)  # jumpdest
         self._fill_label(name)
         return self
 
@@ -196,18 +196,18 @@ class Contract:
 
     def dup(self, n: int) -> "Contract":
         """
-        Opcode dup1 to dup16, duplicate the nth stack item
+        Opcode dup1(0x80) to dup16(0x8F), duplicate the nth stack item
         """
-        if n < 0 or n >= 16:
+        if n < 1 or n > 16:
             raise ValueError(f"Invalid n: {n}")
-        self.code.append(0x80 + n)
+        self.code.append(0x7F + n)
         return self
 
     def swap(self, n: int) -> "Contract":
         """
-        Opcode swap1 to swap16
+        Opcode swap1(0x90) to swap16(0x9F), swap top and (n+1)th stack items
         """
-        if n < 0 or n >= 16:
+        if n < 1 or n > 16:
             raise ValueError(f"Invalid n: {n}")
         self.code.append(0x8F + n)
         return self

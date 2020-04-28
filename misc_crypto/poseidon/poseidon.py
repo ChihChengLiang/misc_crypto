@@ -55,10 +55,8 @@ def get_constants(t: int, seed: bytes, rounds: int):
     return get_pseudo_random(seed + b"_constants", rounds)
 
 
-@to_tuple
-def ark(state: Tuple[Fr], c: Fr) -> Iterator[Fr]:
-    for s in state:
-        yield s + c
+def ark(state: Sequence[Fr], c: Fr) -> Tuple[Fr, ...]:
+    return tuple(s + c for s in state)
 
 
 def sigma(a: Fr) -> Fr:
@@ -76,10 +74,10 @@ def mix(state: Tuple[Fr], M: Tuple[Tuple[Fr], ...]) -> Iterator[Fr]:
     Perform inner product: state' = M * state
     """
     for row in range(len(state)):
-        result = Fr(0)
+        accumulation = Fr(0)
         for col, s in enumerate(state):
-            result = result + M[row][col] * s
-        yield result
+            accumulation += M[row][col] * s
+        yield accumulation
 
 
 def recommend_parameter(elements_length: int) -> Tuple[int, int, int]:
