@@ -1,5 +1,5 @@
-from eth_utils import encode_hex, decode_hex
-from typing import List, Dict, Sequence
+from eth_utils import encode_hex, decode_hex, is_hex
+from typing import List, Dict, Sequence, Union
 
 OPCODES = {
     "stop": 0x00,
@@ -75,7 +75,10 @@ OPCODES = {
 
 
 def to_big_endian(x: int) -> bytes:
-    return x.to_bytes((x.bit_length() + 7) // 8, "big")
+    if x == 0:
+        return b"\x00"
+    else:
+        return x.to_bytes((x.bit_length() + 7) // 8, "big")
 
 
 class Contract:
@@ -167,10 +170,20 @@ class Contract:
         self._fill_label(name)
         return self
 
-    def push(self, data: bytes):
+    def push(self, input_data: Union[bytes, str, int]):
         """
         Opcode push1(0x60) to push32(0x7f), the length of data determines which opcode to use
         """
+        data: bytes
+        if isinstance(input_data, bytes):
+            data = input_data
+        elif isinstance(input_data, int):
+            data = to_big_endian(input_data)
+        elif is_hex(input_data):
+            data = decode_hex(input_data)
+        else:
+            raise TypeError(f"Unsupported input_data type: {type(input_data)}")
+
         len_data = len(data)
         if len_data == 0 or len_data > 32:
             raise ValueError(f"Invalid data length: {len_data}")
@@ -182,7 +195,7 @@ class Contract:
 
     def dup(self, n: int):
         """
-        Opcode dup1 to dup16
+        Opcode dup1 to dup16, duplicate the nth stack item
         """
         if n < 0 or n >= 16:
             raise ValueError(f"Invalid n: {n}")
