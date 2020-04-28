@@ -82,9 +82,9 @@ def to_big_endian(x: int) -> bytes:
 
 
 class Contract:
-    code: List[bytes]
-    labels: Dict[str, List[bytes]]
-    pending_labels: Dict[str, List[bytes]]
+    code: List[int]
+    labels: Dict[str, int]
+    pending_labels: Dict[str, List[int]]
 
     def __init__(self):
         self.code = []
@@ -129,7 +129,7 @@ class Contract:
 
         return method
 
-    def _push_label(self, label: str) -> None:
+    def _push_label(self, label: str) -> "Contract":
         if label in self.labels:
             self.push(self.labels[label])
         else:
@@ -150,20 +150,20 @@ class Contract:
                 self.code[position + i + 1] = dsti
         del self.pending_labels[label]
 
-    def jmp(self, label: str = None):
+    def jmp(self, label: str = None) -> "Contract":
         if label is not None:
             self._push_label(label)
         self.code.append(0x56)
         return self
 
-    def jmpi(self, label: str):
+    def jmpi(self, label: str) -> "Contract":
         if label is None:
             raise ValueError(f"Invalid label: {label}")
         self._push_label(label)
         self.code.append(0x57)
         return self
 
-    def label(self, name: str):
+    def label(self, name: str) -> "Contract":
         if name in self.labels:
             raise ValueError(f"Label already defined: {name}")
         self.labels[name] = len(self.code)
@@ -171,7 +171,7 @@ class Contract:
         self._fill_label(name)
         return self
 
-    def push(self, input_data: Union[bytes, str, int]):
+    def push(self, input_data: Union[bytes, str, int]) -> "Contract":
         """
         Opcode push1(0x60) to push32(0x7f), the length of data determines which opcode to use
         """
@@ -194,7 +194,7 @@ class Contract:
         self.code.extend([d for d in data])
         return self
 
-    def dup(self, n: int):
+    def dup(self, n: int) -> "Contract":
         """
         Opcode dup1 to dup16, duplicate the nth stack item
         """
@@ -203,7 +203,7 @@ class Contract:
         self.code.append(0x80 + n)
         return self
 
-    def swap(self, n: int):
+    def swap(self, n: int) -> "Contract":
         """
         Opcode swap1 to swap16
         """
