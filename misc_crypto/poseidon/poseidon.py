@@ -10,19 +10,12 @@ class Fr(FQ):
     field_modulus = curve_order
 
 
-def little_endian_to_int(_input: bytes) -> int:
-    result = 0
-    for i, byte in enumerate(_input):
-        result += byte << (i * 8)
-    return result
-
-
 @to_tuple
 def get_pseudo_random(seed: bytes, n: int) -> Iterator[Fr]:
     h = seed
     for _ in range(n):
         h = blake2b(h, digest_size=32).digest()
-        yield Fr(little_endian_to_int(h))
+        yield Fr(int.from_bytes(h, "little"))
 
 
 def all_different(_tuple: Sequence[Fr]) -> bool:

@@ -1,17 +1,11 @@
 import pytest
 from hashlib import blake2b
 from misc_crypto.poseidon import (
-    little_endian_to_int,
     get_pseudo_random,
     get_matrix,
     poseidon_t6,
     Poseidon,
 )
-
-
-def test_little_endian_to_int():
-    assert little_endian_to_int(b"poseidon") == 7957689470423363440
-
 
 def test_blake2b_version():
     h = blake2b(b"poseidon_constants", digest_size=32).hexdigest()
