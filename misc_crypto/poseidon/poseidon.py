@@ -1,85 +1,10 @@
-from py_ecc.bn128 import curve_order
-from py_ecc.fields import FQ
-from hashlib import blake2b
-from eth_utils import to_tuple
 from typing import Tuple, Iterator, Sequence
-
-
-# All the algebra of the circuit must be in the Fr Field
-class Fr(FQ):
-    field_modulus = curve_order
-
-
-def little_endian_to_int(_input: bytes) -> int:
-    result = 0
-    for i, byte in enumerate(_input):
-        result += byte << (i * 8)
-    return result
-
-
-@to_tuple
-def get_pseudo_random(seed: bytes, n: int) -> Iterator[Fr]:
-    h = seed
-    for _ in range(n):
-        h = blake2b(h, digest_size=32).digest()
-        yield Fr(little_endian_to_int(h))
-
-
-def all_different(_tuple: Sequence[Fr]) -> bool:
-    _list = list(_tuple)
-    for _ in range(len(_tuple)):
-        a = _list.pop()
-        if a == Fr(0):
-            return False
-        for b in _list:
-            if a == b:
-                return False
-    return True
-
-
-@to_tuple
-def get_matrix(t: int, seed: bytes) -> Iterator[Tuple[Fr, ...]]:
-    nonce = 0
-    _seed = b"".join([seed, b"_matrix_", f"{nonce:04d}".encode()])
-    cmatrix = get_pseudo_random(_seed, t * t)
-    while not all_different(cmatrix):
-        nonce += 1
-        nonceStr = f"{nonce:04d}".encode() if nonce < 10000 else bytes(nonce)
-        _seed = b"".join([seed, b"_matrix_", nonceStr])
-        cmatrix = get_pseudo_random(_seed, t * t)
-    for i in range(t):
-        yield tuple(Fr(1) / (cmatrix[i] - cmatrix[t + j]) for j in range(t))
-
-
-def get_constants(t: int, seed: bytes, rounds: int):
-    return get_pseudo_random(seed + b"_constants", rounds)
-
-
-@to_tuple
-def ark(state: Tuple[Fr], c: Fr) -> Iterator[Fr]:
-    for s in state:
-        yield s + c
-
-
-def sigma(a: Fr) -> Fr:
-    """
-    Raise a to a**5
-    """
-    a_2 = a * a
-    a_4 = a_2 * a_2
-    return a * a_4
-
-
-@to_tuple
-def mix(state: Tuple[Fr], M: Tuple[Tuple[Fr], ...]) -> Iterator[Fr]:
-    """
-    Perform inner product: state' = M * state
-    """
-    for row in range(len(state)):
-        result = Fr(0)
-        for col, s in enumerate(state):
-            result = result + M[row][col] * s
-        yield result
+from .constants import DEFAULT_SEED
+from .fields import Fr
+from .utils import get_constants, get_matrix, recommend_parameter
+from .hash import poseidon_hash
+from .contract import create_code, ABI
+from eth_utils import decode_hex
 
 
 class Poseidon:
@@ -90,7 +15,7 @@ class Poseidon:
     matrix: Tuple[Tuple[Fr, ...], ...]
     constants: Tuple[Fr]
 
-    def __init__(self, t: int, roundsF: int, roundsP: int, seed=b"poseidon") -> None:
+    def __init__(self, t: int, roundsF: int, roundsP: int, seed=DEFAULT_SEED) -> None:
         self.t = t
         self.roundsF = roundsF
         self.roundsP = roundsP
@@ -98,33 +23,26 @@ class Poseidon:
         self.matrix = get_matrix(t, seed)
         self.constants = get_constants(t, seed, roundsF + roundsP)
 
-    def hash(self, inputs: Tuple[Fr]):
-        len_inputs = len(inputs)
-        if len_inputs > self.t:
-            raise ValueError(
-                (
-                    "Length of inputs should be less than t."
-                    f"Got len(inputs): {len_inputs} "
-                    f"t: {self.t}"
-                )
-            )
-        if len_inputs == 0:
-            raise ValueError("Input shouldn't be empty")
+    @classmethod
+    def from_elements_length(cls, elements_length: int):
+        t, roundsF, roundsP = recommend_parameter(elements_length)
+        return cls(t, roundsF, roundsP)
 
-        # Initial state is inputs padded with zeros to length t
-        state = tuple(inputs) + (Fr(0),) * (self.t - len_inputs)
+    def __repr__(self):
+        return f"Poseidon(t={self.t}, roundsF={self.roundsF}, roundsP={self.roundsP}, seed={self.seed})"
 
-        halfF = self.roundsF / 2
-        for i in range(self.roundsF + self.roundsP):
-            state = ark(state, self.constants[i])
-            if i < halfF or i >= halfF + self.roundsP:
-                # Full S-Box layer round
-                state = tuple(sigma(s) for s in state)
-            else:
-                # Partial S-Box layer round
-                state = (sigma(state[0]),) + state[1:]
-            state = mix(state, self.matrix)
-        return state[0]
+    def hash(self, inputs: Sequence[Fr]) -> Fr:
+        return poseidon_hash(
+            self.t, self.roundsF, self.roundsP, self.matrix, self.constants, inputs
+        )
+
+    def build_contract(self):
+        hexcode = create_code(
+            self.t, self.roundsF, self.roundsP, self.matrix, self.constants
+        )
+        bytecode = decode_hex(hexcode)
+        return bytecode, ABI
 
 
+# This is the circomlib default Poseidon hash function
 poseidon_t6 = Poseidon(6, 8, 57).hash
