@@ -1,6 +1,7 @@
 import pytest
 from misc_crypto.poseidon.contract import create_code, ABI
 from misc_crypto.poseidon import Poseidon
+from misc_crypto.poseidon.utils import get_pseudo_random
 from web3 import Web3, EthereumTesterProvider
 from eth_utils import decode_hex
 
@@ -19,6 +20,28 @@ def test_deployment():
 
     contract_code = create_code(6, 8, 57, poseidon.matrix, poseidon.constants)
     poseidon_contract = get_deployed(abi=ABI, bytecode=decode_hex(contract_code))
-    hash_output = poseidon_contract.functions.poseidon([1, 2]).call()
+    contract_output = poseidon_contract.functions.poseidon([1, 2]).call()
 
-    assert poseidon.hash([1, 2]) == hash_output
+    assert poseidon.hash([1, 2]) == contract_output
+
+
+@pytest.mark.parametrize(
+    "num_elements",
+    (
+        2,
+        5,
+        6,
+        # TODO: 7 and above dosen't work! the assembly code breaks ...
+    ),
+)
+def test_different_parameters(num_elements):
+    poseidon = Poseidon.from_elements_length(num_elements)
+
+    inputs = tuple(int(element) for element in get_pseudo_random(b"5566", num_elements))
+
+    bytecode, abi = poseidon.build_contract()
+
+    poseidon_contract = get_deployed(abi=abi, bytecode=bytecode)
+    contract_output = poseidon_contract.functions.poseidon(inputs).call()
+
+    assert poseidon.hash(inputs) == contract_output

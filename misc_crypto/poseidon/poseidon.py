@@ -4,6 +4,7 @@ from .fields import Fr
 from .utils import get_constants, get_matrix, recommend_parameter
 from .hash import poseidon_hash
 from .contract import create_code, ABI
+from eth_utils import decode_hex
 
 
 class Poseidon:
@@ -36,9 +37,10 @@ class Poseidon:
         )
 
     def build_contract(self):
-        bytecode = create_code(
+        hexcode = create_code(
             self.t, self.roundsF, self.roundsP, self.matrix, self.constants
         )
+        bytecode = decode_hex(hexcode)
         return bytecode, ABI
 
 
