@@ -6,6 +6,9 @@ from misc_crypto.poseidon import (
     poseidon_t6,
     Poseidon,
 )
+from misc_crypto.poseidon.utils import recommend_parameter
+from misc_crypto.poseidon.parameter_finder import find_parameter
+
 
 def test_blake2b_version():
     h = blake2b(b"poseidon_constants", digest_size=32).hexdigest()
@@ -40,6 +43,11 @@ def test_poseidon():
         12242166908188651009877250812424843524687801523336557272219921456462821518061
     )
     assert poseidon_t6([1, 2]) == expected
+
+
+@pytest.mark.parametrize("elements_length", range(2, 27))
+def test_recommended_parameter(elements_length):
+    assert recommend_parameter(elements_length) == find_parameter(elements_length + 1)
 
 
 def test_from_elements_length():
