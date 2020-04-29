@@ -1,7 +1,8 @@
 from misc_crypto.utils.assembly import Contract
-from .poseidon import get_constants, get_matrix, Fr
+from .utils import get_constants, get_matrix
 from eth_utils import decode_hex
 from typing import Union, Tuple
+from .fields import Fr
 
 # Note to reviewers:
 # This module contains evm assemply operations.
