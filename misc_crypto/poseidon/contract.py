@@ -1,8 +1,9 @@
 from misc_crypto.utils.assembly import Contract
 from .utils import get_constants, get_matrix
 from eth_utils import decode_hex
-from typing import Union, Tuple
+from typing import Union, Tuple, Sequence
 from .fields import Fr
+from .constants import DEFAULT_SEED
 
 # Note to reviewers:
 # This module contains evm assemply operations.
@@ -149,10 +150,13 @@ def check_selector(contract: Contract, signature4bytes: str) -> None:
     )
 
 
-def create_code(t, roundsF, roundsP, seed):
-    matrix = get_matrix(t, seed)
-    constants = get_constants(t, seed, roundsF + roundsP)
-
+def create_code(
+    t: int,
+    roundsF: int,
+    roundsP: int,
+    matrix: Sequence[Sequence[Fr]],
+    constants: Sequence[Fr],
+) -> str:
     contract = Contract()
     check_selector(contract, "0xc4420fb4")  # poseidon(uint256[])
 

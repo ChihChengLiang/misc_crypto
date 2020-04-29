@@ -14,13 +14,11 @@ def get_deployed(abi, bytecode):
     return instance
 
 
-def test_poseidon_contract():
-    contract_code = create_code(6, 8, 57, b"poseidon")
-
-
 def test_deployment():
-    contract_code = create_code(6, 8, 57, b"poseidon")
+    poseidon = Poseidon(6, 8, 57)
+
+    contract_code = create_code(6, 8, 57, poseidon.matrix, poseidon.constants)
     poseidon_contract = get_deployed(abi=ABI, bytecode=decode_hex(contract_code))
     hash_output = poseidon_contract.functions.poseidon([1, 2]).call()
 
-    assert Poseidon(6, 8, 57).hash([1, 2]) == hash_output
+    assert poseidon.hash([1, 2]) == hash_output
