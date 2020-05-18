@@ -81,6 +81,11 @@ def to_big_endian(x: int) -> bytes:
         return x.to_bytes((x.bit_length() + 7) // 8, "big")
 
 
+# For a label that's not yet defined, we leave a 3 bytes placeholder
+# We fill the placeholder with the actual instruction position when the label is defined.
+LABEL_POSITION_PLACEHOLDER = b"\x00\x00\x00"
+
+
 class Contract:
     code: List[int]
     labels: Dict[str, int]
@@ -130,24 +135,29 @@ class Contract:
         return method
 
     def _push_label(self, label: str) -> "Contract":
+        """
+        If the label is already defined, we fill in the label's instruction position
+        When the label is undefined, we leave a placeholder and record the position that needs
+        to fill in the label's instruction position later.
+        """
         if label in self.labels:
             self.push(self.labels[label])
         else:
             if label not in self.pending_labels:
                 self.pending_labels[label] = []
             self.pending_labels[label] += [len(self.code)]
-            self.push(b"\x00\x00\x00")
+            self.push(LABEL_POSITION_PLACEHOLDER)
         return self
 
     def _fill_label(self, label: str) -> None:
         if label not in self.pending_labels:
             return
 
-        dst = self.labels[label]
-        dst3 = [dst >> 16, (dst >> 8) & 0xFF, dst & 0xFF]
+        # Replace the 3 bytes LABEL_POSITION_PLACEHOLDER with the label's actual position
+        destination_3bytes = self.labels[label].to_bytes(3, "big")
         for position in self.pending_labels[label]:
-            for i, dsti in enumerate(dst3):
-                self.code[position + i + 1] = dsti
+            for i, byte in enumerate(destination_3bytes):
+                self.code[position + i + 1] = byte
         del self.pending_labels[label]
 
     def jmp(self, label: str = None) -> "Contract":
