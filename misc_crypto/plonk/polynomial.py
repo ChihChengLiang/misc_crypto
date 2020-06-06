@@ -6,11 +6,20 @@ class Polynomial:
 
     def __init__(self, *args):
         self.coefficients = args
+        self.remove_leading_zeros()
+
+    @classmethod
+    def from_roots(cls, *roots):
+        result = cls(1)
+        for root in roots:
+            result *= cls(-root, 1)
+        return result
 
     def __repr__(self):
-        return "".join(
+        terms = "".join(
             self.format_term(c_i, i) for i, c_i in enumerate(self.coefficients)
         )
+        return f"Polynomial<{terms}>"
 
     @staticmethod
     def format_term(coefficient, power):
@@ -39,3 +48,82 @@ class Polynomial:
             result += coefficient * power
             power *= x
         return result
+
+    def remove_leading_zeros(self):
+        while len(self.coefficients) > 0 and self.coefficients[-1] == 0:
+            self.coefficients = self.coefficients[:-1]
+
+    @property
+    def degree(self) -> int:
+        return len(self.coefficients)
+
+    def add(self, other: "Polynomial"):
+        long_poly, short_poly = (
+            (self, other) if self.degree >= other.degree else (other, self)
+        )
+        min_degree = min(self.degree, other.degree)
+        coefficients = (
+            tuple(
+                l + s for l, s in zip(long_poly.coefficients, short_poly.coefficients)
+            )
+            + long_poly.coefficients[min_degree:]
+        )
+        return Polynomial(*coefficients)
+
+    def shift(self, right: int):
+        if right == 0:
+            return self
+        elif right > 0:
+            return Polynomial(*([0] * len(right) + self.coefficients))
+        elif right < 0:
+            raise ValueError("shift left not supported yet")
+        else:
+            raise Exception("Unreachable")
+
+    def __mul__(self, other):
+        if isinstance(other, (int, float)):
+            return self.multiply_constant(other)
+        elif isinstance(other, Polynomial):
+            return self.multiply_polynomial(other)
+        else:
+            raise TypeError("invalid multiplication")
+
+    def __add__(self, other):
+        if isinstance(other, (int, float)):
+            return Polynomial(
+                *((self.coefficients[0] + other,) + self.coefficients[0:])
+            )
+        elif isinstance(other, Polynomial):
+            return self.add(other)
+        else:
+            raise TypeError("invalid multiplication")
+
+    def multiply_constant(self, other: int):
+        return Polynomial(*(c * other for c in self.coefficients))
+
+    def multiply_polynomial(self, other: "Polynomial"):
+        result = Polynomial()
+        for i, self_c in enumerate(self.coefficients):
+            coeff = (0,) * i + tuple(self_c * other_c for other_c in other.coefficients)
+            result = result.add(Polynomial(*coeff))
+        return result
+
+    def __eq__(self, other):
+        return self.coefficients == other.coefficients
+
+    def satisfy(self, x):
+        return self.evaluate(x) == 0
+
+
+def lagrange(x: Sequence[int], y: Sequence[int]):
+    if len(x) != len(y):
+        raise ValueError("length should not be different")
+    result = Polynomial()
+    for i in range(len(x)):
+        x_rest = x[:i] + x[i + 1 :]
+        denominator = 1
+        for xx in x_rest:
+            denominator *= x[i] - xx
+        coeff = y[i] / denominator
+        result += Polynomial.from_roots(*x_rest) * coeff
+    return result
