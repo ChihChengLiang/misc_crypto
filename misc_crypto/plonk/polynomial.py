@@ -1,8 +1,9 @@
-from typing import Sequence
+from typing import Sequence, Union
+from .field import FieldElement
 
 
 class Polynomial:
-    coefficients: Sequence[int]
+    coefficients: Sequence[FieldElement]
 
     def __init__(self, *args):
         self.coefficients = args
@@ -30,10 +31,10 @@ class Polynomial:
             coefficient_part = " + "
         elif coefficient == -1:
             coefficient_part = " - "
-        elif coefficient > 0:
-            coefficient_part = f" + {coefficient}"
-        else:
+        elif isinstance(coefficient, int) and coefficient < 0:
             coefficient_part = f" - {-coefficient}"
+        else:
+            coefficient_part = f" + {coefficient}"
         if power == 0:
             return str(coefficient)
         elif power == 1:
@@ -41,7 +42,7 @@ class Polynomial:
         else:
             return f"{coefficient_part}x^{power}"
 
-    def evaluate(self, x):
+    def evaluate(self, x: FieldElement) -> FieldElement:
         power = 1
         result = 0
         for coefficient in self.coefficients:
@@ -49,7 +50,7 @@ class Polynomial:
             power *= x
         return result
 
-    def remove_leading_zeros(self):
+    def remove_leading_zeros(self) -> None:
         while len(self.coefficients) > 0 and self.coefficients[-1] == 0:
             self.coefficients = self.coefficients[:-1]
 
@@ -57,7 +58,7 @@ class Polynomial:
     def degree(self) -> int:
         return len(self.coefficients)
 
-    def add(self, other: "Polynomial"):
+    def add(self, other: "Polynomial") -> "Polynomial":
         long_poly, short_poly = (
             (self, other) if self.degree >= other.degree else (other, self)
         )
@@ -70,7 +71,7 @@ class Polynomial:
         )
         return Polynomial(*coefficients)
 
-    def shift(self, right: int):
+    def shift(self, right: int) -> "Polynomial":
         if right == 0:
             return self
         elif right > 0:
@@ -80,11 +81,11 @@ class Polynomial:
         else:
             raise Exception("Unreachable")
 
-    def __mul__(self, other):
-        if isinstance(other, (int, float)):
-            return self.multiply_constant(other)
-        elif isinstance(other, Polynomial):
+    def __mul__(self, other: Union["Polynomial", FieldElement]) -> "Polynomial":
+        if isinstance(other, Polynomial):
             return self.multiply_polynomial(other)
+        elif getattr(other, "__mul__", None) is not None:
+            return self.multiply_constant(other)
         else:
             raise TypeError("invalid multiplication")
 
@@ -98,24 +99,24 @@ class Polynomial:
         else:
             raise TypeError("invalid multiplication")
 
-    def multiply_constant(self, other: int):
+    def multiply_constant(self, other: int) -> "Polynomial":
         return Polynomial(*(c * other for c in self.coefficients))
 
-    def multiply_polynomial(self, other: "Polynomial"):
+    def multiply_polynomial(self, other: "Polynomial") -> "Polynomial":
         result = Polynomial()
         for i, self_c in enumerate(self.coefficients):
             coeff = (0,) * i + tuple(self_c * other_c for other_c in other.coefficients)
             result = result.add(Polynomial(*coeff))
         return result
 
-    def __eq__(self, other):
+    def __eq__(self, other: "Polynomial") -> bool:
         return self.coefficients == other.coefficients
 
-    def satisfy(self, x):
+    def satisfy(self, x: FieldElement) -> bool:
         return self.evaluate(x) == 0
 
 
-def lagrange(x: Sequence[int], y: Sequence[int]) -> Polynomial:
+def lagrange(x: Sequence[FieldElement], y: Sequence[FieldElement]) -> Polynomial:
     if len(x) != len(y):
         raise ValueError("length should not be different")
     result = Polynomial()

@@ -4,6 +4,8 @@ from misc_crypto.plonk.polynomial import (
     coordinate_pair_accumulator,
 )
 
+from misc_crypto.plonk.field import Fr
+
 
 def test_polynomial():
 
@@ -30,6 +32,7 @@ def test_polynomial_multiplication():
 
 def test_lagrange():
     assert lagrange([0, 1, 2], [0, 1, 8]) == Polynomial(0, -2, 3)
+    assert lagrange([Fr(0), Fr(1), Fr(2)], [Fr(0), Fr(1), Fr(8)]) == Polynomial(Fr(0), Fr(-2), Fr(3))
 
 
 def test_coordinate_pair_accumulator():
@@ -38,3 +41,9 @@ def test_coordinate_pair_accumulator():
 
     p = coordinate_pair_accumulator(x, y, 5, 3, 2)
     assert p.evaluate(4) == -240
+
+def test_polynomial_works_on_fields():
+    p = Polynomial(Fr(1), Fr(2), Fr(100))
+    repr(p)
+    p.evaluate(Fr(0))
+    p.evaluate(Fr(5))
