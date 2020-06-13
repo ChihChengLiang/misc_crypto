@@ -58,7 +58,7 @@ class Polynomial:
     def degree(self) -> int:
         return len(self.coefficients)
 
-    def add(self, other: "Polynomial") -> "Polynomial":
+    def add_polynomial(self, other: "Polynomial") -> "Polynomial":
         long_poly, short_poly = (
             (self, other) if self.degree >= other.degree else (other, self)
         )
@@ -71,11 +71,14 @@ class Polynomial:
         )
         return Polynomial(*coefficients)
 
+    def add_scalar(self, other: FieldElement) -> "Polynomial":
+        return Polynomial(self.coefficients[0] + other, *self.coefficients[1:])
+
     def shift(self, right: int) -> "Polynomial":
         if right == 0:
             return self
         elif right > 0:
-            return Polynomial(*([0] * len(right) + self.coefficients))
+            return Polynomial(*((0,) * right + self.coefficients))
         elif right < 0:
             raise ValueError("shift left not supported yet")
         else:
@@ -90,14 +93,23 @@ class Polynomial:
             raise TypeError("invalid multiplication")
 
     def __add__(self, other):
-        if isinstance(other, (int, float)):
-            return Polynomial(
-                *((self.coefficients[0] + other,) + self.coefficients[0:])
-            )
-        elif isinstance(other, Polynomial):
-            return self.add(other)
+        if isinstance(other, Polynomial):
+            return self.add_polynomial(other)
+        elif getattr(other, "__add__", None) is not None:
+            return self.add_scalar(other)
         else:
-            raise TypeError("invalid multiplication")
+            raise TypeError("invalid addition")
+
+    def __sub__(self, other):
+        if isinstance(other, Polynomial):
+            return self.add_polynomial(-other)
+        elif getattr(other, "__sub__", None) is not None:
+            return self.add_scalar(-other)
+        else:
+            raise TypeError("invalid subtraction")
+
+    def __neg__(self):
+        return Polynomial(*[-c for c in self.coefficients])
 
     def multiply_constant(self, other: int) -> "Polynomial":
         return Polynomial(*(c * other for c in self.coefficients))
@@ -106,7 +118,7 @@ class Polynomial:
         result = Polynomial()
         for i, self_c in enumerate(self.coefficients):
             coeff = (0,) * i + tuple(self_c * other_c for other_c in other.coefficients)
-            result = result.add(Polynomial(*coeff))
+            result = result.add_polynomial(Polynomial(*coeff))
         return result
 
     def __eq__(self, other: "Polynomial") -> bool:
@@ -114,6 +126,29 @@ class Polynomial:
 
     def satisfy(self, x: FieldElement) -> bool:
         return self.evaluate(x) == 0
+
+    @property
+    def is_zero(self) -> bool:
+        return len(self.coefficients) == 0 or self.coefficients[0] == 0
+
+    def __truediv__(self, other: "Polynomial") -> "Polynomial":
+        if other.is_zero:
+            raise ZeroDivisionError
+
+        if len(other.coefficients) > 2 or other.coefficients[1] != 1:
+            raise NotImplementedError("General polynomial division is unsupported")
+
+        q = Polynomial(0)
+        r = self
+        while not r.is_zero and r.degree >= other.degree:
+            t = Polynomial(r.coefficients[-1]).shift(r.degree - other.degree)
+            q = q + t
+            r = r - t * other
+
+        if not r.is_zero:
+            raise ValueError("Remainder is not zero:", r)
+
+        return q
 
 
 def lagrange(x: Sequence[FieldElement], y: Sequence[FieldElement]) -> Polynomial:
