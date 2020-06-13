@@ -115,7 +115,7 @@ class Polynomial:
         return self.evaluate(x) == 0
 
 
-def lagrange(x: Sequence[int], y: Sequence[int]):
+def lagrange(x: Sequence[int], y: Sequence[int]) -> Polynomial:
     if len(x) != len(y):
         raise ValueError("length should not be different")
     result = Polynomial()
@@ -127,3 +127,13 @@ def lagrange(x: Sequence[int], y: Sequence[int]):
         coeff = y[i] / denominator
         result += Polynomial.from_roots(*x_rest) * coeff
     return result
+
+
+def coordinate_pair_accumulator(
+    x: Polynomial, y: Polynomial, n: int, v1, v2
+) -> Polynomial:
+    p = [1]
+    evaluation_domain = list(range(n))
+    for i in evaluation_domain:
+        p.append(p[-1] * (v1 + x.evaluate(i) + v2 * y.evaluate(i)))
+    return lagrange(evaluation_domain, p[:-1])

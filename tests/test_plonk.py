@@ -1,4 +1,8 @@
-from misc_crypto.plonk.polynomial import Polynomial, lagrange
+from misc_crypto.plonk.polynomial import (
+    Polynomial,
+    lagrange,
+    coordinate_pair_accumulator,
+)
 
 
 def test_polynomial():
@@ -23,5 +27,14 @@ def test_polynomial_addition():
 def test_polynomial_multiplication():
     assert Polynomial(1, 1) * Polynomial(1, 1) == Polynomial(1, 2, 1)
 
+
 def test_lagrange():
     assert lagrange([0, 1, 2], [0, 1, 8]) == Polynomial(0, -2, 3)
+
+
+def test_coordinate_pair_accumulator():
+    x = Polynomial(0, 1)
+    y = Polynomial(-2, 7, -5, 1)
+
+    p = coordinate_pair_accumulator(x, y, 5, 3, 2)
+    assert p.evaluate(4) == -240
