@@ -7,7 +7,7 @@ setup(
     author="Chih-Cheng Liang",
     author_email="cc@ethereum.org",
     packages=find_packages(exclude=("tests")),
-    install_requires=["eth-utils>=1.8.4,<2", "py-ecc<2.0.0,>=1.4.7"],
+    install_requires=["eth-utils>=1.8.4,<2", "py-ecc>=4.0.0<5"],
     python_requires=">=3.5, <4",
     extras_require={
         "test": ["pytest>=5.3.2", "web3[tester]"],
