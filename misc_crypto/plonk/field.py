@@ -30,11 +30,6 @@ def pairing_check(G1_left, G2_left, G1_right, G2_right) -> bool:
     return final_exponentiation == FQ12.one()
 
 
-class Curve(Protocol):
-    G1: "FieldElement"
-    G2: "FieldElement"
-
-
 class FieldElement(Protocol):
     def __add__(self, other: IntOrFE) -> "FieldElement":
         ...
