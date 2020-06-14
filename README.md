@@ -1,5 +1,7 @@
 # Misc Crypto
 
+![Python package](https://github.com/ChihChengLiang/misc_crypto/workflows/Python%20package/badge.svg)
+
 Mischievous cryptography implementations for personal use. Do not use in production.
 
 ## Poseidon Hash
