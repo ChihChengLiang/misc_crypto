@@ -12,6 +12,7 @@ from misc_crypto.plonk.commitment import (
     create_witness_same_z,
     verify_evaluation_same_z,
 )
+from misc_crypto.plonk.constraint import circuit
 
 
 def test_polynomial():
@@ -92,3 +93,8 @@ def test_polynomial_commitment_same_z():
         witness=witness,
         srs=srs,
     )
+
+
+def test_circuit():
+    c = circuit()
+    c.print()

@@ -1,53 +1,19 @@
 # fan-in   2 arithmetic circuits
 # fan-out  n gates and m wires
 
-from typing import Sequence
-from .field import Field
+from typing import Sequence, Dict, Union, Tuple
+from .field import FieldElement
 from dataclasses import dataclass
 from enum import Enum
 
 
-class Vabc:
-    a: Sequence[int]  # [m]^n left
-    b: Sequence[int]  # right
-    c: Sequence[int]  # output
-
-
-class SelectorVectors:
-    q_l: Sequence[Field]
-    q_r: Sequence[Field]
-    q_o: Sequence[Field]
-    q_m: Sequence[Field]
-    q_c: Sequence[Field]
-
-
-class ConstraintSystem:
-    V: Vabc
-    Q: SelectorVectors
-
-
-class Opcode(Enum):
-    ADD = 1
-    MUL = 2
-    EQ = 3
-    SECRET_INPUT = 4
-    PUBLIC_INPUT = 5
-
-HANDLER_NAME = {
-    Opcode.ADD: "add"
-    Opcode.MUL: "mul"
-    Opcode.EQ: "eq"
-    Opcode.SECRET_INPUT: "secret_input"
-    Opcode.PUBLIC_INPUT: "public_input"
-}
-
 @dataclass
 class Selector:
-    gate_left: Field
-    gate_right: Field
-    gate_output: Field
-    gate_multiplication: Field
-    gate_copy: Field
+    gate_left: FieldElement
+    gate_right: FieldElement
+    gate_output: FieldElement
+    gate_multiplication: FieldElement
+    gate_copy: FieldElement
 
     @classmethod
     def add(cls):
@@ -67,124 +33,118 @@ class Selector:
 
 
 @dataclass
-class Witness:
-    a: Field
-    b: Field
-    c: Field
+class Gate:
+    index: int
+    left: "Wire"
+    right: "Wire"
+    out: "Wire"
+
+    def __repr__(self):
+        left_index = self.left.index if self.left is not None else None
+        right_index = self.right.index if self.right is not None else None
+        out_index = self.out.index if self.out is not None else None
+        return (
+            f"<Gate {self.index} left {left_index} right {right_index} out {out_index}>"
+        )
+
+
+@dataclass
+class Wire:
+    index: int
+    name: None
+    hand: Gate
+    other_hand: Gate
+
+    def __repr__(self):
+        hand_index = self.hand.index if self.hand is not None else None
+        other_hand_index = (
+            self.other_hand.index if self.other_hand is not None else None
+        )
+
+        return f"<Wire {self.index} name {self.name} hand {hand_index} other_hand {other_hand_index}>"
+
 
 class Circuit:
-    opcodes: Sequence[Opcode]
-
-
-    def __init__(self):
-        self.opcodes = []
-
-    def add(self):
-        self.opcodes.append(Opcode.ADD)
-        return self
-
-    def mul(self):
-        self.opcodes.append(Opcode.MUL)
-        return self
-
-    def eq(self):
-        self.opcodes.append(Opcode.EQ)
-        return self
-
-    def input(self, value):
-        self.opcodes.append(Opcode.INPUT)
-        self.opcodes.append(value)
-        return self
-
-
-def parse(instruction: Sequence[Opcode], machine):
-    iterator = iter(instruction)
-    try:
-        next_item = next(iterator)
-        if next_item == Opcode.ADD:
-            machine.add()
-        elif next_item == Opcode.MUL:
-            machine.mul()
-        elif next_item == Opcode.EQ:
-            machine.eq()
-        elif next_item == Opcode.INPUT:
-            value = next(iterator)
-            machine.input(value)
-        else:
-            raise Exception("Unreachable")
-    except StopIteration:
-        return
-
-class Signal:
-    name: str
-    value: Field
-
-    def __init__(self, name: str):
-        self.name = name
-        self.value = value
-
-class WitnessMachine:
-    a: Sequence[int]
-    b: Sequence[int]
-    c: Sequence[int]
+    secret_inputs: Dict[str, Wire]
+    wires: Sequence[Wire]
+    gates: Sequence[Gate]
+    public_inputs: Sequence[Wire]
+    selectors: Sequence[Selector]
 
     def __init__(self):
-        self.a = []
-        self.b = []
-        self.c = []
+        self.wires = []
+        self.secret_inputs = []
+        self.gates = []
+        self.public_inputs = []
+        self.selectors = []
 
-    def private_signal(self, name:str):
+    def print(self):
+        print()
+        for g in self.gates:
+            print(g)
+
+        for wire in self.wires:
+            print(wire)
+
+    def secret_input(self, name: str):
+        gate = self.new_gate(left=None, right=None)
+        self.secret_inputs.append(gate)
+        return gate
+
+    def new_wire(self, name: str = None, hand=None, other_hand=None):
+        index = len(self.wires)
+        wire = Wire(index=index, name=name, hand=hand, other_hand=other_hand)
+        self.wires.append(wire)
+        return wire
+
+    def new_gate_from_wire(self, left: Wire, right: Wire):
+        gate_index = len(self.gates)
+        out_wire = self.new_wire()
+        gate = Gate(index=gate_index, left=left, right=right, out=out_wire)
+        out_wire.hand = gate
+        self.gates.append(gate)
+        return gate
+
+    def new_gate(self, left: Gate, right: Gate):
+        left_wire = left.out if left is not None else None
+        right_wire = right.out if right is not None else None
+        gate = self.new_gate_from_wire(left_wire, right_wire)
+        if left is not None:
+            left_wire.other_hand = gate
+        if right is not None:
+            right_wire.other_hand = gate
+        return gate
+
+    def gate_mul(self, left: Gate, right: Gate):
+        self.selectors.append(Selector.mul())
+        gate = self.new_gate(left, right)
+        return gate
+
+    def gate_add(self, left: Wire, right: Wire):
+        self.selectors.append(Selector.add())
+        gate = self.new_gate(left, right)
+        return gate
+
+    def gate_public_input(self, name: str):
+        # self.selectors.append(Selector.input())
+        wire = self.new_wire(name)
+        self.public_inputs.append(wire)
+        gate = self.new_gate_from_wire(left=wire, right=None)
+        return gate
+
+    def output_eq(self, gate1: Gate, gate2: Gate):
+        self.new_wire(hand=gate1.out, other_hand=gate2.out)
 
 
-    # def add(self):
-    #     self.
-    #     return self
+def circuit():
 
-    # def mul(self):
-    #     self.opcodes.append(Opcode.MUL)
-    #     return self
-
-    # def eq(self):
-    #     self.opcodes.append(Opcode.EQ)
-    #     return self
-
-    # def input(self, value):
-    #     self.opcodes.append(Opcode.INPUT)
-    #     self.opcodes.append(value)
-    #     return self
-
-def example_circuit():
-    
-    circuit = Circuit()
-    x = circuit.secret_input("x")
-    y = circuit.public_input("y")
-    x.mul(x).mul(x).add(x).add(5).eq(y)
-
-    return circuit
-
-def check_circuit():
-    circuit = example_circuit()
-    circuit.calculate_witness(x= 3, y=35)
-
-def gen_witness(x):
-    a = [x,     x*x,    x*x*x,      35, x*x*x + x ]
-    b = [x,     x,      x,          0,  5         ]
-    c = [x*x,   x*x*x , x + x*x*x,  0,  35        ]
-    return(a,b,c)
-
-constraints = [Selector.mul(), Selector.mul(), Selector.add(),  Selector.input(35), Selector.add() ]
-
-def copy_constraint(eval_domain, Xcoef, Ycoef, v1, v2):
-    Px = [1]
-    Y = []
-    rlc = []
-    x = []
-
-    for i in range(0, len(eval_domain)):
-        x.append(polynomial_eval(Xcoef, eval_domain[i]))
-        Y.append(polynomial_eval(Ycoef, x[i]))
-
-        rlc.append(v1 + x[i] + v2 * Y[i])
-        Px.append(Px[i] * (v1 + x[i] + v2 * Y[i]))
-
-    return (x, Y, Px, rlc)
+    c = Circuit()
+    x = c.secret_input("x")
+    g1 = c.gate_mul(x, x)
+    g2 = c.gate_mul(g1, x)
+    g3 = c.gate_add(x, g2)
+    g4 = c.gate_public_input("const")
+    g5 = c.gate_add(g4, g3)
+    g6 = c.gate_public_input("y")
+    c.output_eq(g5, g6)
+    return c
