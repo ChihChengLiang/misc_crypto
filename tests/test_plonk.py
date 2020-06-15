@@ -98,3 +98,11 @@ def test_polynomial_commitment_same_z():
 def test_circuit():
     c = circuit()
     c.print()
+
+    input_mapping = {"x": 3, "const": 5, "y": 35}
+    va, vb, vc = c.calculate_witness(input_mapping)
+
+    assert va == [3, 3, 9, 3, 5, 30, 35]
+    assert vb == [0, 3, 3, 27, 0, 5, 0]
+    assert vc == [3, 9, 27, 30, 5, 35, 35]
+

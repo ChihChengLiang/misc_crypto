@@ -34,49 +34,91 @@ class Selector:
 
 @dataclass
 class Gate:
-    index: int
+    index: int = -1
+    out_wire: "Wire" = None
+
+    def feed_output(self):
+        calculated_output = self.calculate_output()
+        if self.out_wire.value != None:
+            raise ValueError(
+                f"Contradiction, outwire has value {self.out_wire.value}, but this gate is feeding it {calculated_output}"
+            )
+        else:
+            self.out_wire.value = calculated_output
+
+    def calculate_output(self):
+        raise NotImplemented
+
+    def return_abc_value(self):
+        raise NotImplemented
+
+
+class TwoFanInGate(Gate):
     left: "Wire"
     right: "Wire"
-    out: "Wire"
 
-    def __repr__(self):
-        left_index = self.left.index if self.left is not None else None
-        right_index = self.right.index if self.right is not None else None
-        out_index = self.out.index if self.out is not None else None
-        return (
-            f"<Gate {self.index} left {left_index} right {right_index} out {out_index}>"
-        )
+    def __init__(self, left, right, **kwargs):
+        super().__init__(**kwargs)
+        self.left = left
+        self.right = right
+
+    @classmethod
+    def operate(cls, left_value, right_value):
+        raise NotImplemented
+
+    def calculate_output(self):
+        return self.operate(self.left.value, self.right.value)
+
+    def return_abc_value(self):
+        return self.left.value, self.right.value, self.out_wire.value
+
+
+class MulGate(TwoFanInGate):
+    @classmethod
+    def operate(cls, left_value, right_value):
+        return left_value * right_value
+
+
+class AddGate(TwoFanInGate):
+    @classmethod
+    def operate(cls, left_value, right_value):
+        return left_value + right_value
+
+
+class VariableGate(Gate):
+    name: str
+    public: bool = False
+    input_value = None
+
+    def feed_input(self, value):
+        self.input_value = value
+
+    def calculate_output(self,):
+        return self.input_value
+
+    def return_abc_value(self):
+        return self.input_value, 0, self.out_wire.value
 
 
 @dataclass
 class Wire:
-    index: int
-    name: None
-    hand: Gate
-    other_hand: Gate
-
-    def __repr__(self):
-        hand_index = self.hand.index if self.hand is not None else None
-        other_hand_index = (
-            self.other_hand.index if self.other_hand is not None else None
-        )
-
-        return f"<Wire {self.index} name {self.name} hand {hand_index} other_hand {other_hand_index}>"
+    in_gate: Gate = None
+    out_gate: Gate = None
+    index: int = -1
+    value = None
 
 
 class Circuit:
-    secret_inputs: Dict[str, Wire]
+    secret_inputs: Sequence[VariableGate]
     wires: Sequence[Wire]
     gates: Sequence[Gate]
-    public_inputs: Sequence[Wire]
-    selectors: Sequence[Selector]
+    public_inputs: Sequence[VariableGate]
 
     def __init__(self):
         self.wires = []
         self.secret_inputs = []
         self.gates = []
         self.public_inputs = []
-        self.selectors = []
 
     def print(self):
         print()
@@ -86,65 +128,77 @@ class Circuit:
         for wire in self.wires:
             print(wire)
 
-    def secret_input(self, name: str):
-        gate = self.new_gate(left=None, right=None)
-        self.secret_inputs.append(gate)
-        return gate
-
-    def new_wire(self, name: str = None, hand=None, other_hand=None):
-        index = len(self.wires)
-        wire = Wire(index=index, name=name, hand=hand, other_hand=other_hand)
-        self.wires.append(wire)
-        return wire
-
-    def new_gate_from_wire(self, left: Wire, right: Wire):
-        gate_index = len(self.gates)
-        out_wire = self.new_wire()
-        gate = Gate(index=gate_index, left=left, right=right, out=out_wire)
-        out_wire.hand = gate
+    def register_gate(self, gate: Gate):
+        out_wire = self.register_wire()
+        gate.out_wire = out_wire
+        out_wire.out_gate = gate
         self.gates.append(gate)
         return gate
 
-    def new_gate(self, left: Gate, right: Gate):
-        left_wire = left.out if left is not None else None
-        right_wire = right.out if right is not None else None
-        gate = self.new_gate_from_wire(left_wire, right_wire)
-        if left is not None:
-            left_wire.other_hand = gate
-        if right is not None:
-            right_wire.other_hand = gate
+    def secret_input(self, name: str):
+        gate = VariableGate()
+        gate.name = name
+        self.register_gate(gate)
+        self.secret_inputs.append(gate)
         return gate
+
+    def register_wire(self):
+        wire = Wire()
+        self.wires.append(wire)
+        return wire
 
     def gate_mul(self, left: Gate, right: Gate):
-        self.selectors.append(Selector.mul())
-        gate = self.new_gate(left, right)
+        gate = MulGate(left.out_wire, right.out_wire)
+        self.register_gate(gate)
         return gate
 
-    def gate_add(self, left: Wire, right: Wire):
-        self.selectors.append(Selector.add())
-        gate = self.new_gate(left, right)
+    def gate_add(self, left: Gate, right: Gate):
+        gate = AddGate(left.out_wire, right.out_wire)
+        self.register_gate(gate)
         return gate
 
     def gate_public_input(self, name: str):
-        # self.selectors.append(Selector.input())
-        wire = self.new_wire(name)
-        self.public_inputs.append(wire)
-        gate = self.new_gate_from_wire(left=wire, right=None)
+        gate = VariableGate()
+        gate.name = name
+        gate.public = True
+        print(gate)
+        self.public_inputs.append(gate)
+        self.register_gate(gate)
         return gate
 
     def output_eq(self, gate1: Gate, gate2: Gate):
-        self.new_wire(hand=gate1.out, other_hand=gate2.out)
+        wire = self.register_wire()
+        wire.in_gate = gate1
+        wire.out_gate = gate2
+
+    def calculate_witness(self, input_mapping):
+
+        for variable in self.public_inputs + self.secret_inputs:
+            variable.feed_input(input_mapping[variable.name])
+        # TODO: handle computational graph and stuff
+        for gate in self.gates:
+            gate.feed_output()
+
+        va = []
+        vb = []
+        vc = []
+        for gate in self.gates:
+            a, b, c = gate.return_abc_value()
+            va.append(a)
+            vb.append(b)
+            vc.append(c)
+        return va, vb, vc
 
 
 def circuit():
 
     c = Circuit()
     x = c.secret_input("x")
-    g1 = c.gate_mul(x, x)
-    g2 = c.gate_mul(g1, x)
-    g3 = c.gate_add(x, g2)
-    g4 = c.gate_public_input("const")
-    g5 = c.gate_add(g4, g3)
-    g6 = c.gate_public_input("y")
-    c.output_eq(g5, g6)
+    x2 = c.gate_mul(x, x)
+    x3 = c.gate_mul(x2, x)
+    x3_plus_x = c.gate_add(x, x3)
+    constant = c.gate_public_input("const")
+    x3_plus_x_plus_const = c.gate_add(x3_plus_x, constant)
+    y = c.gate_public_input("y")
+    c.output_eq(x3_plus_x_plus_const, y)
     return c
