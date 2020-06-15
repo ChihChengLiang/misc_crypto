@@ -8,6 +8,16 @@ from enum import Enum
 
 
 @dataclass
+class GateVectors:
+    # left
+    a: Sequence[FieldElement]
+    # right
+    b: Sequence[FieldElement]
+    # out
+    c: Sequence[FieldElement]
+
+
+@dataclass
 class Selector:
     gate_left: FieldElement
     gate_right: FieldElement
@@ -52,6 +62,9 @@ class Gate:
     def return_abc_value(self):
         raise NotImplemented
 
+    def get_selector(self):
+        raise NotImplemented
+
 
 class TwoFanInGate(Gate):
     left: "Wire"
@@ -78,11 +91,17 @@ class MulGate(TwoFanInGate):
     def operate(cls, left_value, right_value):
         return left_value * right_value
 
+    def get_selector(self):
+        return Selector.mul()
+
 
 class AddGate(TwoFanInGate):
     @classmethod
     def operate(cls, left_value, right_value):
         return left_value + right_value
+
+    def get_selector(self):
+        return Selector.add()
 
 
 class VariableGate(Gate):
@@ -98,6 +117,9 @@ class VariableGate(Gate):
 
     def return_abc_value(self):
         return self.input_value, 0, self.out_wire.value
+
+    def get_selector(self):
+        return Selector.input(self.input_value)
 
 
 @dataclass
@@ -161,7 +183,6 @@ class Circuit:
         gate = VariableGate()
         gate.name = name
         gate.public = True
-        print(gate)
         self.public_inputs.append(gate)
         self.register_gate(gate)
         return gate
@@ -182,12 +203,16 @@ class Circuit:
         va = []
         vb = []
         vc = []
+        selectors = []
         for gate in self.gates:
             a, b, c = gate.return_abc_value()
             va.append(a)
             vb.append(b)
             vc.append(c)
-        return va, vb, vc
+            selectors.append(gate.get_selector())
+        gate_vector = GateVectors(a=va, b=vb, c=vc)
+
+        return gate_vector, selectors
 
 
 def circuit():
