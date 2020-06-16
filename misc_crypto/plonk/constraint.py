@@ -1,11 +1,13 @@
 # fan-in   2 arithmetic circuits
 # fan-out  n gates and m wires
 
-from typing import Sequence, Dict, Union, Tuple
+from typing import Sequence, Dict, Union, Tuple, NewType
 from .field import FieldElement
 from dataclasses import dataclass
 from enum import Enum
 
+
+WireIndex = NewType("WireIndex", int)
 
 @dataclass
 class GateVectors:
@@ -16,6 +18,32 @@ class GateVectors:
     # out
     c: Sequence[FieldElement]
 
+    @classmethod
+    def from_gates(cls, gates: Sequence["Gate"]):
+        xa, xb, xc = [], [], []
+        for gate in gates:
+            a, b, c = gate.return_wire_value()
+            xa.append(a)
+            xb.append(b)
+            xc.append(c)
+        return cls(xa, xb, xc)
+
+
+@dataclass
+class GateWireVectors:
+    a: Sequence[WireIndex]
+    b: Sequence[WireIndex]
+    c: Sequence[WireIndex]
+
+    @classmethod
+    def from_gates(cls, gates: Sequence["Gate"]):
+        a, b, c = [], [], []
+        for gate in gates:
+            a_i, b_i, c_i = gate.return_wire_index()
+            a.append(a_i)
+            b.append(b_i)
+            c.append(c_i)
+        return cls(a, b, c)
 
 @dataclass
 class Selector:
@@ -59,7 +87,10 @@ class Gate:
     def calculate_output(self):
         raise NotImplemented
 
-    def return_abc_value(self):
+    def return_wire_value(self):
+        raise NotImplemented
+
+    def return_wire_index(self):
         raise NotImplemented
 
     def get_selector(self):
@@ -82,9 +113,11 @@ class TwoFanInGate(Gate):
     def calculate_output(self):
         return self.operate(self.left.value, self.right.value)
 
-    def return_abc_value(self):
+    def return_wire_value(self):
         return self.left.value, self.right.value, self.out_wire.value
 
+    def return_wire_index(self):
+        return self.left.index, self.right.index, self.out_wire.index
 
 class MulGate(TwoFanInGate):
     @classmethod
@@ -115,8 +148,12 @@ class VariableGate(Gate):
     def calculate_output(self,):
         return self.input_value
 
-    def return_abc_value(self):
+    def return_wire_value(self):
         return self.input_value, 0, self.out_wire.value
+
+    def return_wire_index(self):
+        return -1, -1, self.out_wire.index
+
 
     def get_selector(self):
         return Selector.input(self.input_value)
@@ -126,7 +163,7 @@ class VariableGate(Gate):
 class Wire:
     in_gate: Gate = None
     out_gate: Gate = None
-    index: int = -1
+    index: WireIndex = -1
     value = None
 
 
@@ -135,12 +172,14 @@ class Circuit:
     wires: Sequence[Wire]
     gates: Sequence[Gate]
     public_inputs: Sequence[VariableGate]
+    wire_index: WireIndex
 
     def __init__(self):
         self.wires = []
         self.secret_inputs = []
         self.gates = []
         self.public_inputs = []
+        self.wire_index = 0
 
     def print(self):
         print()
@@ -157,17 +196,19 @@ class Circuit:
         self.gates.append(gate)
         return gate
 
+    def register_wire(self):
+        wire = Wire()
+        wire.index = self.wire_index
+        self.wires.append(wire)
+        self.wire_index += 1
+        return wire
+
     def secret_input(self, name: str):
         gate = VariableGate()
         gate.name = name
         self.register_gate(gate)
         self.secret_inputs.append(gate)
         return gate
-
-    def register_wire(self):
-        wire = Wire()
-        self.wires.append(wire)
-        return wire
 
     def gate_mul(self, left: Gate, right: Gate):
         gate = MulGate(left.out_wire, right.out_wire)
@@ -200,19 +241,13 @@ class Circuit:
         for gate in self.gates:
             gate.feed_output()
 
-        va = []
-        vb = []
-        vc = []
         selectors = []
         for gate in self.gates:
-            a, b, c = gate.return_abc_value()
-            va.append(a)
-            vb.append(b)
-            vc.append(c)
             selectors.append(gate.get_selector())
-        gate_vector = GateVectors(a=va, b=vb, c=vc)
+        gate_vector = GateVectors.from_gates(self.gates)
+        gate_wire_vector = GateWireVectors.from_gates(self.gates)
 
-        return gate_vector, selectors
+        return gate_vector, selectors, gate_wire_vector
 
 
 def circuit():
