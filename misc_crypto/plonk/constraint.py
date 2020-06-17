@@ -9,6 +9,7 @@ from enum import Enum
 
 WireIndex = NewType("WireIndex", int)
 
+
 @dataclass
 class GateVectors:
     # left
@@ -44,6 +45,10 @@ class GateWireVectors:
             b.append(b_i)
             c.append(c_i)
         return cls(a, b, c)
+
+    def concat(self):
+        return self.a + self.b + self.c
+
 
 @dataclass
 class Selector:
@@ -119,6 +124,7 @@ class TwoFanInGate(Gate):
     def return_wire_index(self):
         return self.left.index, self.right.index, self.out_wire.index
 
+
 class MulGate(TwoFanInGate):
     @classmethod
     def operate(cls, left_value, right_value):
@@ -153,7 +159,6 @@ class VariableGate(Gate):
 
     def return_wire_index(self):
         return -1, -1, self.out_wire.index
-
 
     def get_selector(self):
         return Selector.input(self.input_value)
@@ -245,9 +250,29 @@ class Circuit:
         for gate in self.gates:
             selectors.append(gate.get_selector())
         gate_vector = GateVectors.from_gates(self.gates)
-        gate_wire_vector = GateWireVectors.from_gates(self.gates)
 
-        return gate_vector, selectors, gate_wire_vector
+        return gate_vector, selectors
+
+    def get_gate_wire_vector(self):
+        gate_wire_vector = GateWireVectors.from_gates(self.gates)
+        return gate_wire_vector
+
+    def get_permutation(self):
+        gate_wire_vector = self.get_gate_wire_vector().concat()
+        len_vector = len(gate_wire_vector)
+        mapping = {}
+        for i, wire_index in enumerate(gate_wire_vector):
+            if wire_index not in mapping:
+                mapping[wire_index] = [i]
+            else:
+                mapping[wire_index].append(i)
+
+        permutation_vector = list(range(len_vector))
+        for wire_index, positions_in_vector in mapping.items():
+            for i, position in enumerate(positions_in_vector):
+                # Shift by one permutation
+                permutation_vector[position] = positions_in_vector[i - 1]
+        return permutation_vector
 
 
 def circuit():

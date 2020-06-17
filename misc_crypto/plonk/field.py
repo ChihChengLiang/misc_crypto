@@ -65,3 +65,11 @@ class FieldElement(Protocol):
     @classmethod
     def zero(cls) -> "FieldElement":
         ...
+
+
+
+
+def roots_of_unity(order):
+    a = field.FQ(5)
+    p = curve_order
+    return [a ** (i * (p - 1) / order) for i in range(order)]

@@ -100,11 +100,16 @@ def test_circuit():
     c.print()
 
     input_mapping = {"x": 3, "const": 5, "y": 35}
-    gate_vector, selectors, gate_wire_vector = c.calculate_witness(input_mapping)
+    gate_vector, selectors = c.calculate_witness(input_mapping)
 
     assert gate_vector.a == [3, 3, 9, 3, 5, 30, 35]
     assert gate_vector.b == [0, 3, 3, 27, 0, 5, 0]
     assert gate_vector.c == [3, 9, 27, 30, 5, 35, 35]
 
+    gate_wire_vector = c.get_gate_wire_vector()
 
-    print(gate_wire_vector)
+    assert c.get_permutation() == (
+        [13, 14, 15, 1, 0, 17, 4,]
+        + [6, 3, 8, 16, 7, 18, 11,]
+        + [9, 2, 10, 5, 12, 19, 20,]
+    )

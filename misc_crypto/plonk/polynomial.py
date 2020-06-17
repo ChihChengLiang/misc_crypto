@@ -166,10 +166,10 @@ def lagrange(x: Sequence[FieldElement], y: Sequence[FieldElement]) -> Polynomial
 
 
 def coordinate_pair_accumulator(
-    x: Polynomial, y: Polynomial, n: int, v1, v2
+    x: Polynomial, y: Polynomial, n: int, beta: FieldElement, gamma: FieldElement
 ) -> Polynomial:
     p = [1]
     evaluation_domain = list(range(n))
     for i in evaluation_domain:
-        p.append(p[-1] * (v1 + x.evaluate(i) + v2 * y.evaluate(i)))
+        p.append(p[-1] * (beta + x.evaluate(i) + gamma * y.evaluate(i)))
     return lagrange(evaluation_domain, p[:-1])
