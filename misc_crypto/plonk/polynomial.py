@@ -1,8 +1,49 @@
 from typing import Sequence, Union
 from .field import FieldElement
+from dataclasses import dataclass
+
+
+def fft(
+    coefficients: Sequence[FieldElement], domain: Sequence[FieldElement]
+) -> Sequence[FieldElement]:
+    # TODO: Check domain to be power of 2
+    if len(coefficients) == 1:
+        return coefficients
+    evens = fft(coefficients[::2], domain[::2])
+    odds = fft(coefficients[1::2], domain[::2])
+    left_output = []
+    right_output = []
+    for even, odd, x in zip(evens, odds, domain):
+        x_odd = x * odd
+        left_output.append(even + x_odd)
+        right_output.append(even - x_odd)
+    return left_output + right_output
+
+
+def inverse_fft(
+    evaluations: Sequence[FieldElement], domain: Sequence[FieldElement]
+) -> Sequence[FieldElement]:
+    values = fft(evaluations, domain)
+    # TODO: len_values should be mod field modulus. The function breaks in small field
+    len_values = len(values)
+    return [v / len_values for v in [values[0]] + values[1:][::-1]]
+
+
+@dataclass
+class EvaluationForm:
+    domain: Sequence[FieldElement]
+    evaluations: Sequence[FieldElement]
+
+    def inverse_fft(self) -> "CoefficientForm":
+        coefficients = inverse_fft(self.evaluations, self.domain)
+        return Polynomial(*coefficients)
 
 
 class Polynomial:
+    """
+    CoefficientForm
+    """
+
     coefficients: Sequence[FieldElement]
 
     def __init__(self, *args):
@@ -149,6 +190,10 @@ class Polynomial:
             raise ValueError("Remainder is not zero:", r)
 
         return q
+
+    def fft(self, domain: Sequence[FieldElement]) -> EvaluationForm:
+        evaluations = fft(self.coefficients, domain)
+        return EvaluationForm(domain=domain, evaluations=evaluations)
 
 
 def lagrange(x: Sequence[FieldElement], y: Sequence[FieldElement]) -> Polynomial:

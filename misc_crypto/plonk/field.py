@@ -67,8 +67,6 @@ class FieldElement(Protocol):
         ...
 
 
-
-
 def roots_of_unity(order):
     a = field.FQ(5)
     p = curve_order

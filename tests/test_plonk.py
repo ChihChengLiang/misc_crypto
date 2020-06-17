@@ -4,7 +4,7 @@ from misc_crypto.plonk.polynomial import (
     coordinate_pair_accumulator,
 )
 
-from misc_crypto.plonk.field import Fr
+from misc_crypto.plonk.field import Fr, FQ
 
 from misc_crypto.plonk.commitment import (
     srs_setup,
@@ -113,3 +113,16 @@ def test_circuit():
         + [6, 3, 8, 16, 7, 18, 11,]
         + [9, 2, 10, 5, 12, 19, 20,]
     )
+
+
+def test_fft():
+    class F337(FQ):
+        field_modulus = 337
+
+    p = Polynomial(3, 1, 4, 1, 5, 9, 2, 6)
+    domain = [F337(85) ** i for i in range(8)]
+    assert domain == [1, 85, 148, 111, 336, 252, 189, 226]
+    evaluation_form = p.fft(domain)
+    assert evaluation_form.evaluations == [31, 70, 109, 74, 334, 181, 232, 4]
+    p2 = evaluation_form.inverse_fft()
+    assert p2.coefficients == (3, 1, 4, 1, 5, 9, 2, 6)
