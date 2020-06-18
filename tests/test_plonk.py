@@ -154,7 +154,8 @@ def test_prover():
 
     c = circuit()
     input_mapping = {"x": 3, "const": 5, "y": 35}
-    prover_input = c.calculate_witness(input_mapping)
+    c.calculate_witness(input_mapping)
+    prover_input = c.get_prover_input()
 
     proof = tuple(prove(prover_input, srs))
     print(proof)

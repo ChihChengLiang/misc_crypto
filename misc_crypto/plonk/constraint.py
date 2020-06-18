@@ -25,6 +25,26 @@ class ProverInput:
         n_public_inputs = len(self.public_inputs)
         return self.public_inputs + [0] * (n - n_public_inputs)
 
+    def flatten_selectors(self):
+        qm, ql, qr, qo, qc = [], [], [], [], []
+        for s in self.selectors:
+            qm.append(s.gate_multiplication)
+            ql.append(s.gate_left)
+            qr.append(s.gate_right)
+            qo.append(s.gate_output)
+            qc.append(s.gate_copy)
+        return qm, ql, qr, qo, qc
+
+    def split_permutations(self):
+        n = self.number_of_gates()
+        s_sigma_1 = self.permutation[:n]
+        s_sigma_2 = self.permutation[n:2*n]
+        s_sigma_3 = self.permutation[2*n:]
+        return s_sigma_1, s_sigma_2, s_sigma_3
+
+    def split_witnesses(self):
+        return self.witnesses.a , self.witnesses.b, self.witnesses.c
+
 
 @dataclass
 class GateVectors:

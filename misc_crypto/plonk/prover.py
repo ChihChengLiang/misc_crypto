@@ -8,6 +8,7 @@ from .helpers import (
     custom_hash,
     compute_permutation_challenges,
     vanishing_polynomial,
+    get_permutation_part
 )
 
 
@@ -40,7 +41,8 @@ def prove(prover_input: ProverInput, srs: SRS):
     )
 
     # compute permutation polynomial
-    z = Polynomial(b9, b8, b7) * vanishing + eval_domain.inverse_fft(purrr)
+    evalutations = get_permutation_part(prover_input, beta, gamma, eval_domain)
+    z = Polynomial(b9, b8, b7) * vanishing + eval_domain.inverse_fft(evalutations)
 
     commit_z = commit(z, srs)
 
