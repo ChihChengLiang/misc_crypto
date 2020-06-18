@@ -2,6 +2,7 @@ from .field import Fr, FieldElement, roots_of_unity
 from typing import Sequence
 from .polynomial import Polynomial, lagrange, EvaluationDomain
 from .commitment import commit, SRS
+from .constraint import ProverInput
 
 from .helpers import (
     custom_hash,
@@ -14,38 +15,32 @@ def get_public_input(witnesses):
     return witnesses
 
 
-def prove(witnesses: Sequence[FieldElement], srs: SRS):
-    # number of gates
-    n = len(witnesses) / 3
+def prove(prover_input: ProverInput, srs: SRS):
+    n = prover_input.number_of_gates()
+    witnesses = prover_input.witnesses
     eval_domain = EvaluationDomain.from_roots_of_unity(n)
+    vanishing = vanishing_polynomial(n)
 
     # TODO: make it random
     b1, b2, b3, b4, b5, b6, b7, b8, b9 = [Fr(i) for i in range(9)]
 
-    a = Polynomial(b2, b1) * vanishing_polynomial(n) + eval_domain.inverse_fft(
-        witnesses[:n]
-    )
-    b = Polynomial(b4, b3) * vanishing_polynomial(n) + eval_domain.inverse_fft(
-        witnesses[n : 2 * n]
-    )
-    c = Polynomial(b6, b5) * vanishing_polynomial(n) + eval_domain.inverse_fft(
-        witnesses[2 * n : 3 * n]
-    )
+    a = Polynomial(b2, b1) * vanishing + eval_domain.inverse_fft(witnesses.a)
+    b = Polynomial(b4, b3) * vanishing + eval_domain.inverse_fft(witnesses.b)
+    c = Polynomial(b6, b5) * vanishing + eval_domain.inverse_fft(witnesses.c)
 
     commit_a = commit(a, srs)
     commit_b = commit(b, srs)
     commit_c = commit(c, srs)
 
-    public_inputs = get_public_input(witnesses)
     # First output
-    yield public_inputs, commit_a, commit_b, commit_c
+    yield prover_input.public_inputs, commit_a, commit_b, commit_c
 
     beta, gamma = compute_permutation_challenges(
-        commit_a, commit_b, commit_c, public_inputs
+        commit_a, commit_b, commit_c, prover_input.public_inputs
     )
 
     # compute permutation polynomial
-    z = Polynomial(b9, b8, b7) * vanishing_polynomial() + eval_domain.inverse_fft(purrr)
+    z = Polynomial(b9, b8, b7) * vanishing + eval_domain.inverse_fft(purrr)
 
     commit_z = commit(z, srs)
 
