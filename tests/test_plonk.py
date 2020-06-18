@@ -125,13 +125,11 @@ def test_circuit():
     assert gate_wire_vector.c == [1, 2, 3, 5, 6, 8]
 
     assert c.get_permutation() == (
-        [7, 12, 0, 3, 14, 5]
-        + [2, 6, 13, 11, 15, 9]
-        + [1, 8, 4, 10, 16, 17]
+        [7, 12, 0, 3, 14, 5, 2, 6, 13, 11, 15, 9, 1, 8, 4, 10, 16, 17]
     )
     prover_input = c.get_prover_input()
 
-    assert prover_input.get_public_input_evaluations() == [0, 0, 0, 5, 0, 35]
+    assert prover_input.get_public_input_evaluations() == [0, 0, 0, -5, 0, -35]
 
 
 def test_fft():

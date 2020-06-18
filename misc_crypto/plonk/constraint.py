@@ -22,7 +22,10 @@ class ProverInput:
         return len(self.witnesses.a)
 
     def get_public_input_evaluations(self):
-        return self.public_input_evaluations
+        """
+        We use negative pi in prover. See paper p.24
+        """
+        return [-pi for pi in self.public_input_evaluations]
 
     def flatten_selectors(self):
         qm, ql, qr, qo, qc = [], [], [], [], []
@@ -95,19 +98,19 @@ class Selector:
 
     @classmethod
     def add(cls):
-        return cls(1, 1, 0, -1, 0)
+        return cls(1, 1, -1, 0, 0)
 
     @classmethod
     def mul(cls):
-        return cls(0, 0, 1, -1, 0)
+        return cls(0, 0, -1, 1, 0)
 
     @classmethod
     def eq(cls):
-        return cls(-1, 0, 1, 0, 0)
+        return cls(-1, 0, 0, 1, 0)
 
     @classmethod
-    def input(cls, value):
-        return cls(1, 0, 0, 0, -value)
+    def input(cls):
+        return cls(1, 0, 0, 0, 0)
 
 
 @dataclass
@@ -191,7 +194,7 @@ class PublicInputGate(Gate):
         return self.in_wire.index, -1, self.out_wire.index
 
     def get_selector(self):
-        return Selector.input(self.in_wire.value)
+        return Selector.input()
 
 
 @dataclass
