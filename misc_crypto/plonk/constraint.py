@@ -15,6 +15,7 @@ class ProverInput:
     witnesses: "GateVectors"
     selectors: Sequence["Selector"]
     public_inputs: Sequence[FieldElement]
+    permutation: Sequence[int]
 
     def number_of_gates(self):
         return len(self.witnesses.a)
@@ -274,22 +275,17 @@ class Circuit:
         for gate in self.gates:
             gate.feed_output()
 
+    def get_gate_vector(self):
+        return GateVectors.from_gates(self.gates)
+
+    def get_gate_wire_vector(self):
+        return GateWireVectors.from_gates(self.gates)
+
+    def get_selectors(self):
         selectors = []
         for gate in self.gates:
             selectors.append(gate.get_selector())
-        gate_vector = GateVectors.from_gates(self.gates)
-
-        public_inputs = [v.input_value for v in self.public_inputs]
-
-        prover_input = ProverInput(
-            witnesses=gate_vector, selectors=selectors, public_inputs=public_inputs
-        )
-
-        return prover_input
-
-    def get_gate_wire_vector(self):
-        gate_wire_vector = GateWireVectors.from_gates(self.gates)
-        return gate_wire_vector
+        return selectors
 
     def get_permutation(self):
         gate_wire_vector = self.get_gate_wire_vector().concat()
@@ -307,6 +303,23 @@ class Circuit:
                 # Shift by one permutation
                 permutation_vector[position] = positions_in_vector[i - 1]
         return permutation_vector
+
+    def get_prover_input(self):
+        gate_vector = self.get_gate_vector()
+        selectors = self.get_selectors()
+
+        public_inputs = [v.input_value for v in self.public_inputs]
+
+        permutation = self.get_permutation()
+
+        prover_input = ProverInput(
+            witnesses=gate_vector,
+            selectors=selectors,
+            public_inputs=public_inputs,
+            permutation=permutation,
+        )
+
+        return prover_input
 
 
 def circuit():
