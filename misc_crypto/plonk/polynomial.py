@@ -180,20 +180,23 @@ class Polynomial:
         if other.is_zero:
             raise ZeroDivisionError
 
-        if len(other.coefficients) > 2 or other.coefficients[1] != 1:
-            raise NotImplementedError("General polynomial division is unsupported")
+        if self.degree < other.degree:
+            raise ValueError("other has higher degree:", self, other)
 
-        q = Polynomial(0)
-        r = self
-        while not r.is_zero and r.degree >= other.degree:
-            t = Polynomial(r.coefficients[-1]).shift(r.degree - other.degree)
-            q = q + t
-            r = r - t * other
+        quotient = Polynomial(0)
+        remainder = self
+        for _ in range(self.degree - other.degree + 1):
+            quotient_coefficient = remainder.coefficients[-1] / other.coefficients[-1]
+            multiplier = Polynomial(quotient_coefficient).shift(
+                remainder.degree - other.degree
+            )
+            quotient += multiplier
+            remainder -= multiplier * other
 
-        if not r.is_zero:
+        if not remainder.is_zero:
             raise ValueError("Remainder is not zero:", r)
 
-        return q
+        return quotient
 
     def fft(self, evaluation_domain: EvaluationDomain) -> Sequence[FieldElement]:
         evaluations = fft(self.coefficients, evaluation_domain.domain)

@@ -53,7 +53,7 @@ def prove(prover_input: ProverInput, srs: SRS):
     # Compute quotient challenge
     alpha = custom_hash(commit_a, commit_b, commit_c, commit_z)
 
-    l1 = vanishing / Polynomial(-1, 1) * (1 / Fr(n))  # (x^n - 1)/ (n * (x - 1))
+    l1 = vanishing / (Polynomial(-1, 1) * n)  # (x^n - 1)/ ((x - 1) * n)
     satisfication = compute_satisfication_polynomial(a, b, c, prover_input, eval_domain)
     # Compute quotient polynomial
     t = (

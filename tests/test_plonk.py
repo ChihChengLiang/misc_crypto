@@ -60,6 +60,18 @@ def test_division():
     b = Polynomial(-6, 1)
     assert a / b == Polynomial(48, 8, 1)
 
+    a = Polynomial(1, 3, 3, 1)
+    b = Polynomial(1, 2, 1)
+    assert a / b == Polynomial(1, 1)
+
+    class F13(FQ):
+        field_modulus = 13
+
+    # (x^n -1) / (n*(x-1)) == (1/n)(x^(n-1) +... + 1)
+    assert Polynomial(F13(-1), F13(0), F13(0), F13(0), F13(1)) / (
+        Polynomial(F13(-1), F13(1)) * 4
+    ) == Polynomial(10, 10, 10, 10)
+
 
 def test_polynomial_commitment_same_z():
     d = 5
