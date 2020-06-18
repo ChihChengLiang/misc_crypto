@@ -61,3 +61,20 @@ def get_permutation_part(
         for ev_1, ev_2, ev_3 in zip(evaluations_1, evaluations_2, evaluations_3)
     ]
     return products
+
+
+def compute_satisfication_polynomial(
+    a, b, c, prover_input: ProverInput, eval_domain: EvaluationDomain
+) -> Polynomial:
+    qm, ql, qr, qo, qc = prover_input.flatten_selectors()
+    public_inputs_evaluations = prover_input.get_public_input_evaluations()
+    a_evals = a.fft(eval_domain)
+    b_evals = b.fft(eval_domain)
+    c_evals = c.fft(eval_domain)
+    results = []
+    for aev, bev, cev, m, l, r, o, c, pi in zip(
+        a_evals, b_evals, c_evals, qm, ql, qr, qo, qc, public_inputs_evaluations
+    ):
+        result = aev * bev * m + aev * l + bev * r + cev * o + pi + c
+        results.append(result)
+    return eval_domain.inverse_fft(results)

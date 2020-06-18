@@ -8,7 +8,8 @@ from .helpers import (
     custom_hash,
     compute_permutation_challenges,
     vanishing_polynomial,
-    get_permutation_part
+    get_permutation_part,
+    compute_satisfication_polynomial,
 )
 
 
@@ -52,24 +53,23 @@ def prove(prover_input: ProverInput, srs: SRS):
     # Compute quotient challenge
     alpha = custom_hash(commit_a, commit_b, commit_c, commit_z)
 
-    l1 = 0
+    l1 = vanishing / Polynomial(-1, 1) * (1 / Fr(n))  # (x^n - 1)/ (n * (x - 1))
+    satisfication = compute_satisfication_polynomial(a, b, c, prover_input, eval_domain)
     # Compute quotient polynomial
     t = (
-        (a * b * qm + a * ql + b * qr + c * qo + public_input_polynomial + qc)
-        * alpha
-        / vanishing_polynomial()
+        satisfication * alpha / vanishing
         + (a + Polynomial(gamma, beta))
         * (b + Polynomial(gamma, beta * k1))
         * (c + Polynomial(gamma, beta * k2) * z)
         * alpha ** 2
-        / vanishing_polynomial()
+        / vanishing
         - (a + beta * sigma1 + gamma)
         * (b + beta * sigma2 + gamma)
         * (c + beta * sigma3 + gamma)
         * z.shift(1)
         * alpha ** 2
-        / vanishing_polynomial()
-        + (z - 1) * l1 * alpha ** 3 / vanishing_polynomial()
+        / vanishing
+        + (z - 1) * l1 * alpha ** 3 / vanishing
     )
     coeff = t.coefficients
     t_lo = Polynomial(*coeff[:n])
