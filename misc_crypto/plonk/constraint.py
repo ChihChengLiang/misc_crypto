@@ -11,6 +11,21 @@ WireIndex = NewType("WireIndex", int)
 
 
 @dataclass
+class ProverInput:
+    witnesses: "GateVectors"
+    selectors: Sequence["Selector"]
+    public_inputs: Sequence[FieldElement]
+
+    def number_of_gates(self):
+        return len(self.witnesses.a)
+
+    def get_public_input_evaluations(self):
+        n = self.number_of_gates()
+        n_public_inputs = len(self.public_inputs)
+        return self.public_inputs + [0] * (n - n_public_inputs)
+
+
+@dataclass
 class GateVectors:
     # left
     a: Sequence[FieldElement]
@@ -147,6 +162,8 @@ class VariableGate(Gate):
     name: str
     public: bool = False
     input_value = None
+    # In wire is required by paper
+    in_wire: "Wire"
 
     def feed_input(self, value):
         self.input_value = value
@@ -158,7 +175,10 @@ class VariableGate(Gate):
         return self.input_value, 0, self.out_wire.value
 
     def return_wire_index(self):
-        return -1, -1, self.out_wire.index
+        if self.public:
+            return self.in_wire.index, -1, self.out_wire.index
+        else:
+            return -1, -1, self.out_wire.index
 
     def get_selector(self):
         return Selector.input(self.input_value)
@@ -177,14 +197,12 @@ class Circuit:
     wires: Sequence[Wire]
     gates: Sequence[Gate]
     public_inputs: Sequence[VariableGate]
-    wire_index: WireIndex
 
     def __init__(self):
         self.wires = []
         self.secret_inputs = []
         self.gates = []
         self.public_inputs = []
-        self.wire_index = 0
 
     def print(self):
         print()
@@ -203,9 +221,7 @@ class Circuit:
 
     def register_wire(self):
         wire = Wire()
-        wire.index = self.wire_index
         self.wires.append(wire)
-        self.wire_index += 1
         return wire
 
     def secret_input(self, name: str):
@@ -229,6 +245,7 @@ class Circuit:
         gate = VariableGate()
         gate.name = name
         gate.public = True
+        gate.in_wire = self.register_wire()
         self.public_inputs.append(gate)
         self.register_gate(gate)
         return gate
@@ -242,6 +259,17 @@ class Circuit:
 
         for variable in self.public_inputs + self.secret_inputs:
             variable.feed_input(input_mapping[variable.name])
+
+        # Index wires
+        wire_index = 0
+        for variable in self.public_inputs:
+            variable.in_wire.index = wire_index
+            wire_index += 1
+        for wire in self.wires:
+            if wire.index == -1:
+                wire.index = wire_index
+                wire_index += 1
+
         # TODO: handle computational graph and stuff
         for gate in self.gates:
             gate.feed_output()
@@ -251,7 +279,13 @@ class Circuit:
             selectors.append(gate.get_selector())
         gate_vector = GateVectors.from_gates(self.gates)
 
-        return gate_vector, selectors
+        public_inputs = [v.input_value for v in self.public_inputs]
+
+        prover_input = ProverInput(
+            witnesses=gate_vector, selectors=selectors, public_inputs=public_inputs
+        )
+
+        return prover_input
 
     def get_gate_wire_vector(self):
         gate_wire_vector = GateWireVectors.from_gates(self.gates)

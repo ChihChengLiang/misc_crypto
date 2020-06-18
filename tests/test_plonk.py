@@ -93,19 +93,26 @@ def test_circuit():
     c.print()
 
     input_mapping = {"x": 3, "const": 5, "y": 35}
-    gate_vector, selectors = c.calculate_witness(input_mapping)
+    prover_input = c.calculate_witness(input_mapping)
+
+    gate_vector = prover_input.witnesses
 
     assert gate_vector.a == [3, 3, 9, 3, 5, 30, 35]
     assert gate_vector.b == [0, 3, 3, 27, 0, 5, 0]
     assert gate_vector.c == [3, 9, 27, 30, 5, 35, 35]
 
     gate_wire_vector = c.get_gate_wire_vector()
+    assert gate_wire_vector.a == [-1, 2, 3, 2, 0, 5, 1]
+    assert gate_wire_vector.b == [-1, 2, 2, 4, -1, 6, -1]
+    assert gate_wire_vector.c == [2, 3, 4, 5, 6, 7, 8]
 
     assert c.get_permutation() == (
-        [13, 14, 15, 1, 0, 17, 4,]
-        + [6, 3, 8, 16, 7, 18, 11,]
+        [13, 14, 15, 1, 4, 17, 6,]
+        + [0, 3, 8, 16, 7, 18, 11,]
         + [9, 2, 10, 5, 12, 19, 20,]
     )
+
+    assert prover_input.get_public_input_evaluations() == [5, 35, 0, 0, 0, 0, 0]
 
 
 def test_fft():
@@ -124,7 +131,6 @@ def test_fft():
 def test_permutation_polynomial_evalutations():
     class F13(FQ):
         field_modulus = 13
-
 
     beta = F13(3)
     gamma = F13(5)
