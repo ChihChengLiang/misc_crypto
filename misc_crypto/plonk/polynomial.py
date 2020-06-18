@@ -36,7 +36,7 @@ class EvaluationDomain:
     @classmethod
     def from_roots_of_unity(cls, order: int):
         domain = roots_of_unity(order)
-        return cls(*domain)
+        return cls(domain)
 
     def inverse_fft(self, evaluations: Sequence[FieldElement]) -> "Polynomial":
         coefficients = inverse_fft(evaluations, self.domain)

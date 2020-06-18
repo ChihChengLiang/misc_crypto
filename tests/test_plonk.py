@@ -15,6 +15,8 @@ from misc_crypto.plonk.commitment import (
 )
 from misc_crypto.plonk.constraint import circuit
 
+from misc_crypto.plonk.prover import prove
+
 
 def test_polynomial():
 
@@ -143,3 +145,15 @@ def test_permutation_polynomial_evalutations():
         beta, gamma, f_evaluations, s_id_evals, s_sigma_evals
     )
     assert evals == [1, 1, 4, 12]
+
+
+def test_prover():
+
+    srs = srs_setup(10, 5)
+
+    c = circuit()
+    input_mapping = {"x": 3, "const": 5, "y": 35}
+    prover_input = c.calculate_witness(input_mapping)
+
+    proof = tuple(prove(prover_input, srs))
+    print(proof)
