@@ -15,15 +15,14 @@ class ProverInput:
     witnesses: "GateVectors"
     selectors: Sequence["Selector"]
     public_inputs: Sequence[FieldElement]
+    public_input_evaluations: Sequence[FieldElement]
     permutation: Sequence[int]
 
     def number_of_gates(self):
         return len(self.witnesses.a)
 
     def get_public_input_evaluations(self):
-        n = self.number_of_gates()
-        n_public_inputs = len(self.public_inputs)
-        return self.public_inputs + [0] * (n - n_public_inputs)
+        return self.public_input_evaluations
 
     def flatten_selectors(self):
         qm, ql, qr, qo, qc = [], [], [], [], []
@@ -38,12 +37,12 @@ class ProverInput:
     def split_permutations(self):
         n = self.number_of_gates()
         s_sigma_1 = self.permutation[:n]
-        s_sigma_2 = self.permutation[n:2*n]
-        s_sigma_3 = self.permutation[2*n:]
+        s_sigma_2 = self.permutation[n : 2 * n]
+        s_sigma_3 = self.permutation[2 * n :]
         return s_sigma_1, s_sigma_2, s_sigma_3
 
     def split_witnesses(self):
-        return self.witnesses.a , self.witnesses.b, self.witnesses.c
+        return self.witnesses.a, self.witnesses.b, self.witnesses.c
 
 
 @dataclass
@@ -179,45 +178,45 @@ class AddGate(TwoFanInGate):
         return Selector.add()
 
 
-class VariableGate(Gate):
+class PublicInputGate(Gate):
+    in_wire: "Wire"
+
+    def calculate_output(self,):
+        return self.in_wire.value
+
+    def return_wire_value(self):
+        return self.in_wire.value, 0, self.out_wire.value
+
+    def return_wire_index(self):
+        return self.in_wire.index, -1, self.out_wire.index
+
+    def get_selector(self):
+        return Selector.input(self.in_wire.value)
+
+
+@dataclass
+class Variable:
     name: str
     public: bool = False
     input_value = None
-    # In wire is required by paper
-    in_wire: "Wire"
 
     def feed_input(self, value):
         self.input_value = value
 
-    def calculate_output(self,):
-        return self.input_value
-
-    def return_wire_value(self):
-        return self.input_value, 0, self.out_wire.value
-
-    def return_wire_index(self):
-        if self.public:
-            return self.in_wire.index, -1, self.out_wire.index
-        else:
-            return -1, -1, self.out_wire.index
-
-    def get_selector(self):
-        return Selector.input(self.input_value)
-
 
 @dataclass
 class Wire:
-    in_gate: Gate = None
+    intake: Union[Gate, Variable] = None
     out_gate: Gate = None
     index: WireIndex = -1
     value = None
 
 
 class Circuit:
-    secret_inputs: Sequence[VariableGate]
+    secret_inputs: Sequence[Variable]
     wires: Sequence[Wire]
     gates: Sequence[Gate]
-    public_inputs: Sequence[VariableGate]
+    public_inputs: Sequence[Variable]
 
     def __init__(self):
         self.wires = []
@@ -246,34 +245,56 @@ class Circuit:
         return wire
 
     def secret_input(self, name: str):
-        gate = VariableGate()
-        gate.name = name
+        variable = Variable(name=name, public=False)
+        wire = self.register_wire()
+        wire.intake = variable
+        self.secret_inputs.append(variable)
+        return wire
+
+    def gate_or_wire(self, gate_or_wire: Union[Gate, Wire]) -> Wire:
+        if isinstance(gate_or_wire, Gate):
+            return gate_or_wire.out_wire
+        elif isinstance(gate_or_wire, Wire):
+            return gate_or_wire
+        else:
+            raise Exception("Unreachable")
+
+    def gate_mul(self, left: Union[Gate, Wire], right: Union[Gate, Wire]):
+        left_wire = self.gate_or_wire(left)
+        right_wire = self.gate_or_wire(right)
+        gate = MulGate(left_wire, right_wire)
+        left_wire.out_gate = gate
+        right_wire.out_gate = gate
         self.register_gate(gate)
-        self.secret_inputs.append(gate)
         return gate
 
-    def gate_mul(self, left: Gate, right: Gate):
-        gate = MulGate(left.out_wire, right.out_wire)
-        self.register_gate(gate)
-        return gate
-
-    def gate_add(self, left: Gate, right: Gate):
-        gate = AddGate(left.out_wire, right.out_wire)
+    def gate_add(self, left: Union[Gate, Wire], right: Union[Gate, Wire]):
+        left_wire = self.gate_or_wire(left)
+        right_wire = self.gate_or_wire(right)
+        gate = AddGate(left_wire, right_wire)
+        left_wire.out_gate = gate
+        right_wire.out_gate = gate
         self.register_gate(gate)
         return gate
 
     def gate_public_input(self, name: str):
-        gate = VariableGate()
-        gate.name = name
-        gate.public = True
-        gate.in_wire = self.register_wire()
-        self.public_inputs.append(gate)
+        """
+        Public input needs a wire and a gate (required by the paper)
+
+        """
+        variable = Variable(name=name, public=True)
+        gate = PublicInputGate()
+        wire = self.register_wire()
+        wire.intake = variable
+        wire.out_gate = gate
+        gate.in_wire = wire
+        self.public_inputs.append(variable)
         self.register_gate(gate)
         return gate
 
     def output_eq(self, gate1: Gate, gate2: Gate):
         wire = self.register_wire()
-        wire.in_gate = gate1
+        wire.intake = gate1
         wire.out_gate = gate2
 
     def calculate_witness(self, input_mapping):
@@ -283,15 +304,15 @@ class Circuit:
 
         # Index wires
         wire_index = 0
-        for variable in self.public_inputs:
-            variable.in_wire.index = wire_index
-            wire_index += 1
         for wire in self.wires:
             if wire.index == -1:
                 wire.index = wire_index
                 wire_index += 1
 
         # TODO: handle computational graph and stuff
+        for wire in self.wires:
+            if isinstance(wire.intake, Variable):
+                wire.value = wire.intake.input_value
         for gate in self.gates:
             gate.feed_output()
 
@@ -330,12 +351,21 @@ class Circuit:
 
         public_inputs = [v.input_value for v in self.public_inputs]
 
+        public_input_evaluations = []
+
+        for gate in self.gates:
+            public_input_evaluations.append(
+                gate.calculate_output() if isinstance(gate, PublicInputGate) else 0
+            )
+        print(public_input_evaluations)
+
         permutation = self.get_permutation()
 
         prover_input = ProverInput(
             witnesses=gate_vector,
             selectors=selectors,
             public_inputs=public_inputs,
+            public_input_evaluations=public_input_evaluations,
             permutation=permutation,
         )
 

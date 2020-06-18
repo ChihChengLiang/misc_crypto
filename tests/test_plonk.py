@@ -111,23 +111,27 @@ def test_circuit():
 
     gate_vector = c.get_gate_vector()
 
-    assert gate_vector.a == [3, 3, 9, 3, 5, 30, 35]
-    assert gate_vector.b == [0, 3, 3, 27, 0, 5, 0]
-    assert gate_vector.c == [3, 9, 27, 30, 5, 35, 35]
+    assert len(c.wires) == 10
+    assert len(c.gates) == 6
+
+    # MUL MUL ADD INP ADD INP
+    assert gate_vector.a == [3, 9, 3, 5, 30, 35]
+    assert gate_vector.b == [3, 3, 27, 0, 5, 0]
+    assert gate_vector.c == [9, 27, 30, 5, 35, 35]
 
     gate_wire_vector = c.get_gate_wire_vector()
-    assert gate_wire_vector.a == [-1, 2, 3, 2, 0, 5, 1]
-    assert gate_wire_vector.b == [-1, 2, 2, 4, -1, 6, -1]
-    assert gate_wire_vector.c == [2, 3, 4, 5, 6, 7, 8]
+    assert gate_wire_vector.a == [0, 1, 0, 4, 3, 7]
+    assert gate_wire_vector.b == [0, 0, 2, -1, 5, -1]
+    assert gate_wire_vector.c == [1, 2, 3, 5, 6, 8]
 
     assert c.get_permutation() == (
-        [13, 14, 15, 1, 4, 17, 6,]
-        + [0, 3, 8, 16, 7, 18, 11,]
-        + [9, 2, 10, 5, 12, 19, 20,]
+        [7, 12, 0, 3, 14, 5]
+        + [2, 6, 13, 11, 15, 9]
+        + [1, 8, 4, 10, 16, 17]
     )
     prover_input = c.get_prover_input()
 
-    assert prover_input.get_public_input_evaluations() == [5, 35, 0, 0, 0, 0, 0]
+    assert prover_input.get_public_input_evaluations() == [0, 0, 0, 5, 0, 35]
 
 
 def test_fft():
