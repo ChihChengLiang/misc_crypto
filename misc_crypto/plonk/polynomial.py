@@ -1,5 +1,5 @@
 from typing import Sequence, Union
-from .field import FieldElement
+from .field import FieldElement, roots_of_unity
 from dataclasses import dataclass
 
 
@@ -30,12 +30,16 @@ def inverse_fft(
 
 
 @dataclass
-class EvaluationForm:
+class EvaluationDomain:
     domain: Sequence[FieldElement]
-    evaluations: Sequence[FieldElement]
 
-    def inverse_fft(self) -> "CoefficientForm":
-        coefficients = inverse_fft(self.evaluations, self.domain)
+    @classmethod
+    def from_roots_of_unity(cls, order: int):
+        domain = roots_of_unity(order)
+        return cls(*domain)
+
+    def inverse_fft(self, evaluations: Sequence[FieldElement]) -> "Polynomial":
+        coefficients = inverse_fft(evaluations, self.domain)
         return Polynomial(*coefficients)
 
 
@@ -191,9 +195,9 @@ class Polynomial:
 
         return q
 
-    def fft(self, domain: Sequence[FieldElement]) -> EvaluationForm:
-        evaluations = fft(self.coefficients, domain)
-        return EvaluationForm(domain=domain, evaluations=evaluations)
+    def fft(self, evaluation_domain: EvaluationDomain) -> Sequence[FieldElement]:
+        evaluations = fft(self.coefficients, evaluation_domain.domain)
+        return evaluations
 
 
 def lagrange(x: Sequence[FieldElement], y: Sequence[FieldElement]) -> Polynomial:
@@ -210,11 +214,20 @@ def lagrange(x: Sequence[FieldElement], y: Sequence[FieldElement]) -> Polynomial
     return result
 
 
-def coordinate_pair_accumulator(
-    x: Polynomial, y: Polynomial, n: int, beta: FieldElement, gamma: FieldElement
-) -> Polynomial:
-    p = [1]
-    evaluation_domain = list(range(n))
-    for i in evaluation_domain:
-        p.append(p[-1] * (beta + x.evaluate(i) + gamma * y.evaluate(i)))
-    return lagrange(evaluation_domain, p[:-1])
+def permutation_polynomial_evalutations(
+    beta: FieldElement,
+    gamma: FieldElement,
+    f_evaluations: Sequence[FieldElement],
+    s_id_evals: Sequence[FieldElement],
+    s_sigma_evals: Sequence[int],
+) -> Sequence[FieldElement]:
+    """
+    Returns evalutaions
+    """
+    z = [1]
+    for f, s_id_eval, s_sigma_eval in zip(f_evaluations, s_id_evals, s_sigma_evals):
+        f_prime = f + beta * s_id_eval + gamma
+        g_prime = f + beta * s_sigma_eval + gamma
+        product = z[-1] * f_prime / g_prime
+        z.append(product)
+    return z

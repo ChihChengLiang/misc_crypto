@@ -1,7 +1,8 @@
 from misc_crypto.plonk.polynomial import (
     Polynomial,
     lagrange,
-    coordinate_pair_accumulator,
+    EvaluationDomain,
+    permutation_polynomial_evalutations,
 )
 
 from misc_crypto.plonk.field import Fr, FQ
@@ -43,14 +44,6 @@ def test_lagrange():
     assert lagrange([Fr(0), Fr(1), Fr(2)], [Fr(0), Fr(1), Fr(8)]) == Polynomial(
         Fr(0), Fr(-2), Fr(3)
     )
-
-
-def test_coordinate_pair_accumulator():
-    x = Polynomial(0, 1)
-    y = Polynomial(-2, 7, -5, 1)
-
-    p = coordinate_pair_accumulator(x, y, 5, 3, 2)
-    assert p.evaluate(4) == -240
 
 
 def test_polynomial_works_on_fields():
@@ -120,9 +113,27 @@ def test_fft():
         field_modulus = 337
 
     p = Polynomial(3, 1, 4, 1, 5, 9, 2, 6)
-    domain = [F337(85) ** i for i in range(8)]
-    assert domain == [1, 85, 148, 111, 336, 252, 189, 226]
-    evaluation_form = p.fft(domain)
-    assert evaluation_form.evaluations == [31, 70, 109, 74, 334, 181, 232, 4]
-    p2 = evaluation_form.inverse_fft()
+    domain = EvaluationDomain(domain=[F337(85) ** i for i in range(8)])
+    assert domain.domain == [1, 85, 148, 111, 336, 252, 189, 226]
+    evaluations = p.fft(domain)
+    assert evaluations == [31, 70, 109, 74, 334, 181, 232, 4]
+    p2 = domain.inverse_fft(evaluations)
     assert p2.coefficients == (3, 1, 4, 1, 5, 9, 2, 6)
+
+
+def test_permutation_polynomial_evalutations():
+    class F13(FQ):
+        field_modulus = 13
+
+
+    beta = F13(3)
+    gamma = F13(5)
+    f_evaluations = [F13(7), F13(8), F13(7)]
+    evalutation_domain = [F13(1), F13(2), F13(4)]
+    k1 = 2
+    s_id_evals = [k1 * d for d in evalutation_domain]
+    s_sigma_evals = [2, 1, 0]
+    evals = permutation_polynomial_evalutations(
+        beta, gamma, f_evaluations, s_id_evals, s_sigma_evals
+    )
+    assert evals == [1, 1, 4, 12]

@@ -3,8 +3,8 @@ from .field import FieldElement
 from typing import Sequence
 
 
-def s_id(j: int, n: int, i: int):
-    return (j - 1) * n + i
+def s_id(j: int, n: int, i: int, domain):
+    return domain.fft((j - 1) * n + i
 
 
 # S_sigma_j

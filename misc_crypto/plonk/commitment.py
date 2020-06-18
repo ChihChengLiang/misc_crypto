@@ -73,19 +73,3 @@ def verify_evaluation_same_z(
     x_sub_z_in_G2 = add(srs.g2_to_secret, multiply(G2, (-z).n))
 
     return pairing_check(add(F, neg(v)), G2, neg(witness), x_sub_z_in_G2)
-
-
-# Proof that a polynomial `p` was correctly evaluated at a point `z`
-class Proof:
-    commitment_to_witness: "Commitment"
-    evaluated_point: "G1"
-    commitment_to_polynomial: "Commitment"
-
-
-class AggregateProof:
-    commitment_to_witness: "Commitment"
-    evaluated_points: Sequence["G1"]
-    commitment_to_polynomial: "Commitment"
-
-    def flatten(self) -> "Proof":
-        pass

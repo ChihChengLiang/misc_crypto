@@ -1,36 +1,35 @@
-from .field import Fr, FieldElement
+from .field import Fr, FieldElement, roots_of_unity
 from typing import Sequence
-from .polynomial import Polynomial, lagrange
+from .polynomial import Polynomial, lagrange, EvaluationDomain
 from .commitment import commit, SRS
 
-# Z_H
-def vanishing_polynomial(n: int):
-    return Polynomial(*([-1] + [0] * (n - 1) + [1]))
+from .helpers import (
+    custom_hash,
+    compute_permutation_challenges,
+    vanishing_polynomial,
+)
 
 
 def get_public_input(witnesses):
     return witnesses
 
 
-def custom_hash(*args):
-    return "hash"
-
-
 def prove(witnesses: Sequence[FieldElement], srs: SRS):
     # number of gates
     n = len(witnesses) / 3
+    eval_domain = EvaluationDomain.from_roots_of_unity(n)
 
     # TODO: make it random
     b1, b2, b3, b4, b5, b6, b7, b8, b9 = [Fr(i) for i in range(9)]
 
-    a = Polynomial(b2, b1) * vanishing_polynomial(n) + lagrange(
-        eval_domain, witnesses[:n]
+    a = Polynomial(b2, b1) * vanishing_polynomial(n) + eval_domain.inverse_fft(
+        witnesses[:n]
     )
-    b = Polynomial(b4, b3) * vanishing_polynomial(n) + lagrange(
-        eval_domain, witnesses[n : 2 * n]
+    b = Polynomial(b4, b3) * vanishing_polynomial(n) + eval_domain.inverse_fft(
+        witnesses[n : 2 * n]
     )
-    c = Polynomial(b6, b5) * vanishing_polynomial(n) + lagrange(
-        eval_domain, witnesses[2 * n : 3 * n]
+    c = Polynomial(b6, b5) * vanishing_polynomial(n) + eval_domain.inverse_fft(
+        witnesses[2 * n : 3 * n]
     )
 
     commit_a = commit(a, srs)
@@ -41,12 +40,12 @@ def prove(witnesses: Sequence[FieldElement], srs: SRS):
     # First output
     yield public_inputs, commit_a, commit_b, commit_c
 
-    # compute permutation challenges
-    beta = custom_hash(commit_a, commit_b, commit_c, *public_inputs)
-    gamma = custom_hash(commit_a, commit_b, commit_c, *public_inputs, beta)
+    beta, gamma = compute_permutation_challenges(
+        commit_a, commit_b, commit_c, public_inputs
+    )
 
     # compute permutation polynomial
-    z = Polynomial(b9, b8, b7) * vanishing_polynomial() + lagrange(eval_domain, purrr)
+    z = Polynomial(b9, b8, b7) * vanishing_polynomial() + eval_domain.inverse_fft(purrr)
 
     commit_z = commit(z, srs)
 
