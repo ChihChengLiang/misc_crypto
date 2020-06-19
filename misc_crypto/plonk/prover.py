@@ -57,23 +57,28 @@ def prove(prover_input: ProverInput, srs: SRS):
 
     l1 = vanishing / (Polynomial(-1, 1) * n)  # (x^n - 1)/ ((x - 1) * n)
     satisfication = compute_satisfication_polynomial(a, b, c, prover_input, eval_domain)
-    t1  = satisfication * alpha / vanishing
-    # Compute quotient polynomial
-    t = (
-        t1
-        + (a + Polynomial(gamma, beta))
+    t1 = satisfication * alpha / vanishing
+
+    t2 = (
+        (a + Polynomial(gamma, beta))
         * (b + Polynomial(gamma, beta * K1))
-        * (c + Polynomial(gamma, beta * K2) * z)
+        * (c + Polynomial(gamma, beta * K2))
+        * z
         * alpha ** 2
         / vanishing
-        - (a + beta * sigma1 + gamma)
+    )
+    t3 = (
+        (a + beta * sigma1 + gamma)
         * (b + beta * sigma2 + gamma)
         * (c + beta * sigma3 + gamma)
         * z.shift(1)
         * alpha ** 2
         / vanishing
-        + (z - 1) * l1 * alpha ** 3 / vanishing
     )
+    t4 = (z - 1) * l1 * alpha ** 3 / vanishing
+
+    # Compute quotient polynomial
+    t = t1 + t2 - t3 + t4
     coeff = t.coefficients
     t_lo = Polynomial(*coeff[:n])
     t_mid = Polynomial(*coeff[n : 2 * n])
