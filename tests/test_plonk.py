@@ -5,7 +5,7 @@ from misc_crypto.plonk.polynomial import (
     permutation_polynomial_evalutations,
 )
 
-from misc_crypto.plonk.field import Fr, FQ
+from misc_crypto.plonk.field import Fr, FQ, roots_of_unity
 
 from misc_crypto.plonk.commitment import (
     srs_setup,
@@ -131,6 +131,11 @@ def test_circuit():
     prover_input = c.get_prover_input()
 
     assert prover_input.get_public_input_evaluations() == [0, 0, 0, -5, 0, -35]
+
+
+def test_roots_of_unity():
+    roots = roots_of_unity(8)
+    assert roots[1] * roots[-1] == 1
 
 
 def test_fft():
