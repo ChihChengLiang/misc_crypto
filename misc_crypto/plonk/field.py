@@ -68,6 +68,8 @@ class FieldElement(Protocol):
 
 
 def roots_of_unity(order: int) -> Tuple[Fr, ...]:
+    # TODO: Check the multiplicative subgroup must have size  2^n
+    # TODO: Support fields other than Fr
     a = Fr(5)
-    p = Fr.field_modulus
-    return tuple(a ** (i * (p - 1) / order) for i in range(order))
+    p = Fr.field_modulus - 1
+    return tuple(a ** ((i * p) // order) for i in range(order))
