@@ -3,6 +3,7 @@ from typing import Sequence
 from .polynomial import Polynomial, lagrange, EvaluationDomain
 from .commitment import commit, SRS
 from .constraint import ProverInput
+from .constants import K1, K2
 
 from .helpers import (
     custom_hash,
@@ -20,7 +21,8 @@ def get_public_input(witnesses):
 def prove(prover_input: ProverInput, srs: SRS):
     n = prover_input.number_of_gates()
     witnesses = prover_input.witnesses
-    eval_domain = EvaluationDomain.from_roots_of_unity(n)
+    # Make the domain larger just in case
+    eval_domain = EvaluationDomain.from_roots_of_unity(3 * n)
     vanishing = vanishing_polynomial(n)
 
     # TODO: make it random
@@ -55,12 +57,13 @@ def prove(prover_input: ProverInput, srs: SRS):
 
     l1 = vanishing / (Polynomial(-1, 1) * n)  # (x^n - 1)/ ((x - 1) * n)
     satisfication = compute_satisfication_polynomial(a, b, c, prover_input, eval_domain)
+    t1  = satisfication * alpha / vanishing
     # Compute quotient polynomial
     t = (
-        satisfication * alpha / vanishing
+        t1
         + (a + Polynomial(gamma, beta))
-        * (b + Polynomial(gamma, beta * k1))
-        * (c + Polynomial(gamma, beta * k2) * z)
+        * (b + Polynomial(gamma, beta * K1))
+        * (c + Polynomial(gamma, beta * K2) * z)
         * alpha ** 2
         / vanishing
         - (a + beta * sigma1 + gamma)

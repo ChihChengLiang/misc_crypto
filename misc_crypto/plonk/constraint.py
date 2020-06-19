@@ -5,14 +5,10 @@ from typing import Sequence, Dict, Union, Tuple, NewType
 from .field import FieldElement
 from dataclasses import dataclass
 from enum import Enum
-from math import log2, ceil
+from .utils import next_power_of_2
 
 
 WireIndex = NewType("WireIndex", int)
-
-
-def next_power_of_2(n: int) -> int:
-    return 1 << ceil(log2(n))
 
 
 @dataclass

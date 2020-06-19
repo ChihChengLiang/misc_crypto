@@ -116,7 +116,7 @@ def test_circuit():
     assert c.num_non_trivial_gates() == 6
     assert len(c.gates) == 8
 
-    # MUL MUL ADD INP ADD INP
+    # MUL MUL ADD INP ADD INP DUM DUM
     assert gate_vector.a == [3, 9, 3, 5, 30, 35, 0, 0]
     assert gate_vector.b == [3, 3, 27, 0, 5, 0, 0, 0]
     assert gate_vector.c == [9, 27, 30, 5, 35, 35, 0, 0]
@@ -174,13 +174,13 @@ def test_permutation_polynomial_evalutations():
     evals = permutation_polynomial_evalutations(
         beta, gamma, f_evaluations, s_id_evals, s_sigma_evals
     )
-    assert evals == [1, 1, 4, 12]
+    assert evals == [1, 1, 4]
 
 
 @pytest.mark.xfail(reason="Work in progress")
 def test_prover():
 
-    srs = srs_setup(10, 5)
+    srs = srs_setup(64, 5)
 
     c = circuit()
     input_mapping = {"x": 3, "const": 5, "y": 35}

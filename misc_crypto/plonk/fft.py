@@ -3,26 +3,28 @@ Fast Fourier Transform:
 See https://vitalik.ca/general/2019/05/12/fft.html for motivation
 """
 from typing import Sequence
-from .field import FieldElement
-
-
-def is_power_of_2(n: int) -> bool:
-    return (n & (n - 1) == 0) and n != 0
+from .field import FieldElement, Fr
+from .utils import is_power_of_2
 
 
 def fft(
     coefficients: Sequence[FieldElement], domain: Sequence[FieldElement]
 ) -> Sequence[FieldElement]:
     len_coeff, len_domain = len(coefficients), len(domain)
-    if not is_power_of_2(len_coeff):
-        raise ValueError(
-            "length of coefficients should be a power of 2, got", len_coeff
-        )
 
     if not is_power_of_2(len_domain):
         raise ValueError("length of domain should be a power of 2, got", len_domain)
 
-    return _fft(coefficients, domain)
+    if len_coeff > len_domain:
+        raise ValueError(
+            (
+                f"The number of coefficients ({len_coeff}) should not be larger than "
+                f"the length of domain ({len_domain})"
+            )
+        )
+    padded_coefficients = tuple(coefficients) + (Fr(0),) * (len_domain - len_coeff)
+
+    return _fft(padded_coefficients, domain)
 
 
 def _fft(
