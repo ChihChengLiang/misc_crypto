@@ -1,8 +1,53 @@
 from typing import Sequence, Union
-from .field import FieldElement
+from .field import FieldElement, roots_of_unity
+from dataclasses import dataclass
+
+
+def fft(
+    coefficients: Sequence[FieldElement], domain: Sequence[FieldElement]
+) -> Sequence[FieldElement]:
+    # TODO: Check domain to be power of 2
+    if len(coefficients) == 1:
+        return coefficients
+    evens = fft(coefficients[::2], domain[::2])
+    odds = fft(coefficients[1::2], domain[::2])
+    left_output = []
+    right_output = []
+    for even, odd, x in zip(evens, odds, domain):
+        x_odd = x * odd
+        left_output.append(even + x_odd)
+        right_output.append(even - x_odd)
+    return left_output + right_output
+
+
+def inverse_fft(
+    evaluations: Sequence[FieldElement], domain: Sequence[FieldElement]
+) -> Sequence[FieldElement]:
+    values = fft(evaluations, domain)
+    # TODO: len_values should be mod field modulus. The function breaks in small field
+    len_values = len(values)
+    return [v / len_values for v in [values[0]] + values[1:][::-1]]
+
+
+@dataclass
+class EvaluationDomain:
+    domain: Sequence[FieldElement]
+
+    @classmethod
+    def from_roots_of_unity(cls, order: int):
+        domain = roots_of_unity(order)
+        return cls(domain)
+
+    def inverse_fft(self, evaluations: Sequence[FieldElement]) -> "Polynomial":
+        coefficients = inverse_fft(evaluations, self.domain)
+        return Polynomial(*coefficients)
 
 
 class Polynomial:
+    """
+    CoefficientForm
+    """
+
     coefficients: Sequence[FieldElement]
 
     def __init__(self, *args):
@@ -135,20 +180,27 @@ class Polynomial:
         if other.is_zero:
             raise ZeroDivisionError
 
-        if len(other.coefficients) > 2 or other.coefficients[1] != 1:
-            raise NotImplementedError("General polynomial division is unsupported")
+        if self.degree < other.degree:
+            raise ValueError("other has higher degree:", self, other)
 
-        q = Polynomial(0)
-        r = self
-        while not r.is_zero and r.degree >= other.degree:
-            t = Polynomial(r.coefficients[-1]).shift(r.degree - other.degree)
-            q = q + t
-            r = r - t * other
+        quotient = Polynomial(0)
+        remainder = self
+        for _ in range(self.degree - other.degree + 1):
+            quotient_coefficient = remainder.coefficients[-1] / other.coefficients[-1]
+            multiplier = Polynomial(quotient_coefficient).shift(
+                remainder.degree - other.degree
+            )
+            quotient += multiplier
+            remainder -= multiplier * other
 
-        if not r.is_zero:
+        if not remainder.is_zero:
             raise ValueError("Remainder is not zero:", r)
 
-        return q
+        return quotient
+
+    def fft(self, evaluation_domain: EvaluationDomain) -> Sequence[FieldElement]:
+        evaluations = fft(self.coefficients, evaluation_domain.domain)
+        return evaluations
 
 
 def lagrange(x: Sequence[FieldElement], y: Sequence[FieldElement]) -> Polynomial:
@@ -165,11 +217,20 @@ def lagrange(x: Sequence[FieldElement], y: Sequence[FieldElement]) -> Polynomial
     return result
 
 
-def coordinate_pair_accumulator(
-    x: Polynomial, y: Polynomial, n: int, v1, v2
-) -> Polynomial:
-    p = [1]
-    evaluation_domain = list(range(n))
-    for i in evaluation_domain:
-        p.append(p[-1] * (v1 + x.evaluate(i) + v2 * y.evaluate(i)))
-    return lagrange(evaluation_domain, p[:-1])
+def permutation_polynomial_evalutations(
+    beta: FieldElement,
+    gamma: FieldElement,
+    f_evaluations: Sequence[FieldElement],
+    s_id_evals: Sequence[FieldElement],
+    s_sigma_evals: Sequence[int],
+) -> Sequence[FieldElement]:
+    """
+    Returns evalutaions
+    """
+    z = [1]
+    for f, s_id_eval, s_sigma_eval in zip(f_evaluations, s_id_evals, s_sigma_evals):
+        f_prime = f + beta * s_id_eval + gamma
+        g_prime = f + beta * s_sigma_eval + gamma
+        product = z[-1] * f_prime / g_prime
+        z.append(product)
+    return z

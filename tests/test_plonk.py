@@ -1,10 +1,11 @@
 from misc_crypto.plonk.polynomial import (
     Polynomial,
     lagrange,
-    coordinate_pair_accumulator,
+    EvaluationDomain,
+    permutation_polynomial_evalutations,
 )
 
-from misc_crypto.plonk.field import Fr
+from misc_crypto.plonk.field import Fr, FQ
 
 from misc_crypto.plonk.commitment import (
     srs_setup,
@@ -13,6 +14,9 @@ from misc_crypto.plonk.commitment import (
     verify_evaluation_same_z,
 )
 from misc_crypto.plonk.constraint import circuit
+
+from misc_crypto.plonk.prover import prove
+import pytest
 
 
 def test_polynomial():
@@ -45,14 +49,6 @@ def test_lagrange():
     )
 
 
-def test_coordinate_pair_accumulator():
-    x = Polynomial(0, 1)
-    y = Polynomial(-2, 7, -5, 1)
-
-    p = coordinate_pair_accumulator(x, y, 5, 3, 2)
-    assert p.evaluate(4) == -240
-
-
 def test_polynomial_works_on_fields():
     p = Polynomial(Fr(1), Fr(2), Fr(100))
     repr(p)
@@ -64,6 +60,18 @@ def test_division():
     a = Polynomial(-288, 0, 2, 1)
     b = Polynomial(-6, 1)
     assert a / b == Polynomial(48, 8, 1)
+
+    a = Polynomial(1, 3, 3, 1)
+    b = Polynomial(1, 2, 1)
+    assert a / b == Polynomial(1, 1)
+
+    class F13(FQ):
+        field_modulus = 13
+
+    # (x^n -1) / (n*(x-1)) == (1/n)(x^(n-1) +... + 1)
+    assert Polynomial(F13(-1), F13(0), F13(0), F13(0), F13(1)) / (
+        Polynomial(F13(-1), F13(1)) * 4
+    ) == Polynomial(10, 10, 10, 10)
 
 
 def test_polynomial_commitment_same_z():
@@ -100,10 +108,70 @@ def test_circuit():
     c.print()
 
     input_mapping = {"x": 3, "const": 5, "y": 35}
-    gate_vector, selectors = c.calculate_witness(input_mapping)
+    c.calculate_witness(input_mapping)
 
-    assert gate_vector.a == [3, 3, 9, 3, 5, 30, 35]
-    assert gate_vector.b == [0, 3, 3, 27, 0, 5, 0]
-    assert gate_vector.c == [3, 9, 27, 30, 5, 35, 35]
+    gate_vector = c.get_gate_vector()
 
-    print(selectors)
+    assert len(c.wires) == 10
+    assert len(c.gates) == 6
+
+    # MUL MUL ADD INP ADD INP
+    assert gate_vector.a == [3, 9, 3, 5, 30, 35]
+    assert gate_vector.b == [3, 3, 27, 0, 5, 0]
+    assert gate_vector.c == [9, 27, 30, 5, 35, 35]
+
+    gate_wire_vector = c.get_gate_wire_vector()
+    assert gate_wire_vector.a == [0, 1, 0, 4, 3, 7]
+    assert gate_wire_vector.b == [0, 0, 2, -1, 5, -1]
+    assert gate_wire_vector.c == [1, 2, 3, 5, 6, 8]
+
+    assert c.get_permutation() == (
+        [7, 12, 0, 3, 14, 5, 2, 6, 13, 11, 15, 9, 1, 8, 4, 10, 16, 17]
+    )
+    prover_input = c.get_prover_input()
+
+    assert prover_input.get_public_input_evaluations() == [0, 0, 0, -5, 0, -35]
+
+
+def test_fft():
+    class F337(FQ):
+        field_modulus = 337
+
+    p = Polynomial(3, 1, 4, 1, 5, 9, 2, 6)
+    domain = EvaluationDomain(domain=[F337(85) ** i for i in range(8)])
+    assert domain.domain == [1, 85, 148, 111, 336, 252, 189, 226]
+    evaluations = p.fft(domain)
+    assert evaluations == [31, 70, 109, 74, 334, 181, 232, 4]
+    p2 = domain.inverse_fft(evaluations)
+    assert p2.coefficients == (3, 1, 4, 1, 5, 9, 2, 6)
+
+
+def test_permutation_polynomial_evalutations():
+    class F13(FQ):
+        field_modulus = 13
+
+    beta = F13(3)
+    gamma = F13(5)
+    f_evaluations = [F13(7), F13(8), F13(7)]
+    evalutation_domain = [F13(1), F13(2), F13(4)]
+    k1 = 2
+    s_id_evals = [k1 * d for d in evalutation_domain]
+    s_sigma_evals = [2, 1, 0]
+    evals = permutation_polynomial_evalutations(
+        beta, gamma, f_evaluations, s_id_evals, s_sigma_evals
+    )
+    assert evals == [1, 1, 4, 12]
+
+
+@pytest.mark.xfail(reason="Work in progress")
+def test_prover():
+
+    srs = srs_setup(10, 5)
+
+    c = circuit()
+    input_mapping = {"x": 3, "const": 5, "y": 35}
+    c.calculate_witness(input_mapping)
+    prover_input = c.get_prover_input()
+
+    proof = tuple(prove(prover_input, srs))
+    print(proof)

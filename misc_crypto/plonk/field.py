@@ -1,4 +1,4 @@
-from typing import NewType, Protocol, Union
+from typing import NewType, Protocol, Union, Tuple
 from py_ecc.optimized_bn128 import (
     pairing,
     multiply,
@@ -65,3 +65,9 @@ class FieldElement(Protocol):
     @classmethod
     def zero(cls) -> "FieldElement":
         ...
+
+
+def roots_of_unity(order: int) -> Tuple[Fr, ...]:
+    a = Fr(5)
+    p = Fr.field_modulus
+    return tuple(a ** (i * (p - 1) / order) for i in range(order))
