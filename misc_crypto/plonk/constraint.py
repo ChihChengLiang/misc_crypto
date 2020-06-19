@@ -5,9 +5,14 @@ from typing import Sequence, Dict, Union, Tuple, NewType
 from .field import FieldElement
 from dataclasses import dataclass
 from enum import Enum
+from math import log2, ceil
 
 
 WireIndex = NewType("WireIndex", int)
+
+
+def next_power_of_2(n: int) -> int:
+    return 1 << ceil(log2(n))
 
 
 @dataclass
@@ -112,6 +117,10 @@ class Selector:
     def input(cls):
         return cls(1, 0, 0, 0, 0)
 
+    @classmethod
+    def dummy(cls):
+        return cls(0, 0, 0, 0, 0)
+
 
 @dataclass
 class Gate:
@@ -195,6 +204,28 @@ class PublicInputGate(Gate):
 
     def get_selector(self):
         return Selector.input()
+
+
+class DummyGate(Gate):
+    """
+    We pad this gate to make the number of gates to be power of 2,
+    which is required by fft.
+    """
+
+    def feed_output(self):
+        pass
+
+    def calculate_output(self,):
+        return 0
+
+    def return_wire_value(self):
+        return 0, 0, 0
+
+    def return_wire_index(self):
+        return -1, -1, -1
+
+    def get_selector(self):
+        return Selector.dummy()
 
 
 @dataclass
@@ -300,7 +331,14 @@ class Circuit:
         wire.intake = gate1
         wire.out_gate = gate2
 
+    def num_non_trivial_gates(self):
+        return len([gate for gate in self.gates if not isinstance(gate, DummyGate)])
+
     def calculate_witness(self, input_mapping):
+        len_gate = len(self.gates)
+        dummy_gates_to_add = next_power_of_2(len_gate) - len_gate
+        for _ in range(dummy_gates_to_add):
+            self.gates.append(DummyGate())
 
         for variable in self.public_inputs + self.secret_inputs:
             variable.feed_input(input_mapping[variable.name])

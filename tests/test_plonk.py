@@ -113,24 +113,27 @@ def test_circuit():
     gate_vector = c.get_gate_vector()
 
     assert len(c.wires) == 10
-    assert len(c.gates) == 6
+    assert c.num_non_trivial_gates() == 6
+    assert len(c.gates) == 8
 
     # MUL MUL ADD INP ADD INP
-    assert gate_vector.a == [3, 9, 3, 5, 30, 35]
-    assert gate_vector.b == [3, 3, 27, 0, 5, 0]
-    assert gate_vector.c == [9, 27, 30, 5, 35, 35]
+    assert gate_vector.a == [3, 9, 3, 5, 30, 35, 0, 0]
+    assert gate_vector.b == [3, 3, 27, 0, 5, 0, 0, 0]
+    assert gate_vector.c == [9, 27, 30, 5, 35, 35, 0, 0]
 
     gate_wire_vector = c.get_gate_wire_vector()
-    assert gate_wire_vector.a == [0, 1, 0, 4, 3, 7]
-    assert gate_wire_vector.b == [0, 0, 2, -1, 5, -1]
-    assert gate_wire_vector.c == [1, 2, 3, 5, 6, 8]
+    assert gate_wire_vector.a == [0, 1, 0, 4, 3, 7, -1, -1]
+    assert gate_wire_vector.b == [0, 0, 2, -1, 5, -1, -1, -1]
+    assert gate_wire_vector.c == [1, 2, 3, 5, 6, 8, -1, -1]
 
     assert c.get_permutation() == (
-        [7, 12, 0, 3, 14, 5, 2, 6, 13, 11, 15, 9, 1, 8, 4, 10, 16, 17]
+        [9, 16, 0, 3, 18, 5, 23, 6,]
+        + [2, 8, 17, 7, 19, 11, 13, 14,]
+        + [1, 10, 4, 12, 20, 21, 15, 22,]
     )
     prover_input = c.get_prover_input()
 
-    assert prover_input.get_public_input_evaluations() == [0, 0, 0, -5, 0, -35]
+    assert prover_input.get_public_input_evaluations() == [0, 0, 0, -5, 0, -35, 0, 0]
 
 
 def test_roots_of_unity():
