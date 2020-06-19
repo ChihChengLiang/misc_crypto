@@ -1,32 +1,7 @@
 from typing import Sequence, Union
 from .field import FieldElement, roots_of_unity
 from dataclasses import dataclass
-
-
-def fft(
-    coefficients: Sequence[FieldElement], domain: Sequence[FieldElement]
-) -> Sequence[FieldElement]:
-    # TODO: Check domain to be power of 2
-    if len(coefficients) == 1:
-        return coefficients
-    evens = fft(coefficients[::2], domain[::2])
-    odds = fft(coefficients[1::2], domain[::2])
-    left_output = []
-    right_output = []
-    for even, odd, x in zip(evens, odds, domain):
-        x_odd = x * odd
-        left_output.append(even + x_odd)
-        right_output.append(even - x_odd)
-    return left_output + right_output
-
-
-def inverse_fft(
-    evaluations: Sequence[FieldElement], domain: Sequence[FieldElement]
-) -> Sequence[FieldElement]:
-    values = fft(evaluations, domain)
-    # TODO: len_values should be mod field modulus. The function breaks in small field
-    len_values = len(values)
-    return [v / len_values for v in [values[0]] + values[1:][::-1]]
+from .fft import fft, inverse_fft
 
 
 @dataclass
