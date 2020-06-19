@@ -151,6 +151,12 @@ def test_fft():
     assert p2.coefficients == (3, 1, 4, 1, 5, 9, 2, 6)
 
 
+def test_fft_2():
+    ed = EvaluationDomain.from_roots_of_unity(8)
+    evaluations = [3, 9, 3, 5, 30, 35, 0, 0]
+    assert ed.inverse_fft(evaluations).fft(ed) == evaluations
+
+
 def test_permutation_polynomial_evalutations():
     class F13(FQ):
         field_modulus = 13
