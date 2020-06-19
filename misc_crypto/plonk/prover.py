@@ -10,7 +10,7 @@ from .helpers import (
     compute_permutation_challenges,
     vanishing_polynomial,
     get_permutation_part,
-    compute_satisfication_polynomial,
+    compute_satisfiability_polynomial,
 )
 
 
@@ -56,8 +56,8 @@ def prove(prover_input: ProverInput, srs: SRS):
     alpha = custom_hash(commit_a, commit_b, commit_c, commit_z)
 
     l1 = vanishing / (Polynomial(-1, 1) * n)  # (x^n - 1)/ ((x - 1) * n)
-    satisfication = compute_satisfication_polynomial(a, b, c, prover_input, eval_domain)
-    t1 = satisfication * alpha / vanishing
+    satisfiability = compute_satisfiability_polynomial(a, b, c, prover_input, eval_domain)
+    t1 = satisfiability * alpha / vanishing
 
     t2 = (
         (a + Polynomial(gamma, beta))

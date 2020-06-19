@@ -63,7 +63,7 @@ def get_permutation_part(
     return products
 
 
-def compute_satisfication_polynomial(
+def compute_satisfiability_polynomial(
     a, b, c, prover_input: ProverInput, eval_domain: EvaluationDomain
 ) -> Polynomial:
     qm, ql, qr, qo, qc = prover_input.flatten_selectors()
