@@ -53,8 +53,8 @@ def get_permutation_part(
     s_id_3 = [K2 * d for d in eval_domain.domain]
 
     evaluations_1 = permutation_polynomial_evalutations(beta, gamma, a, s_id_1, sigma_1)
-    evaluations_2 = permutation_polynomial_evalutations(beta, gamma, a, s_id_2, sigma_2)
-    evaluations_3 = permutation_polynomial_evalutations(beta, gamma, a, s_id_3, sigma_3)
+    evaluations_2 = permutation_polynomial_evalutations(beta, gamma, b, s_id_2, sigma_2)
+    evaluations_3 = permutation_polynomial_evalutations(beta, gamma, c, s_id_3, sigma_3)
 
     products = [
         ev_1 * ev_2 * ev_3
