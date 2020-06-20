@@ -64,20 +64,70 @@ def get_permutation_part(
 
 
 def compute_satisfiability_polynomial(
-    a, b, c, prover_input: ProverInput, eval_domain: EvaluationDomain
+    a_evals, b_evals, c_evals, prover_input: ProverInput
 ) -> Polynomial:
     qm, ql, qr, qo, qc = prover_input.flatten_selectors()
     public_inputs_evaluations = prover_input.get_public_input_evaluations()
-    a_evals = a.fft(eval_domain)
-    b_evals = b.fft(eval_domain)
-    c_evals = c.fft(eval_domain)
     results = []
     for aev, bev, cev, m, l, r, o, c, pi in zip(
         a_evals, b_evals, c_evals, qm, ql, qr, qo, qc, public_inputs_evaluations
     ):
         result = aev * bev * m + aev * l + bev * r + cev * o + pi + c
         results.append(result)
-    return eval_domain.inverse_fft(results)
+    return results
+
+
+def compute_t2_evalutaion(
+    a_evals,
+    b_evals,
+    c_evals,
+    z_evals,
+    alpha,
+    beta,
+    gamma,
+    evalutaion_domain: EvaluationDomain,
+):
+    results = []
+    alpha_square = alpha * alpha
+
+    for a, b, c, z, d in zip(
+        a_evals, b_evals, c_evals, z_evals, evalutaion_domain.domain
+    ):
+        aa = a + d * beta + gamma
+        bb = b + d * beta * K1 + gamma
+        cc = c + d * beta * K2 + gamma
+
+        results.append(aa * bb * cc * z * alpha_square)
+    return results
+
+
+def compute_t3_evaluation(
+    a_evals,
+    b_evals,
+    c_evals,
+    z_coset_evals,
+    alpha,
+    beta,
+    gamma,
+    n,
+    sigma1,
+    sigma2,
+    sigma3,
+):
+    results = []
+    alpha_square = alpha * alpha
+
+    for i in range(4 * n):
+        if i < n:
+            aa = a_evals[i] + sigma1[i] * beta + gamma
+            bb = b_evals[i] + sigma2[i] * beta + gamma
+            cc = c_evals[i] + sigma3[i] * beta + gamma
+        else:
+            aa = a_evals[i] + gamma
+            bb = b_evals[i] + gamma
+            cc = c_evals[i] + gamma
+        results.append(aa * bb * cc * z_coset_evals[i] * alpha_square)
+    return results
 
 
 def pre_proving_check(prover_input: ProverInput):

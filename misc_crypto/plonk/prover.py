@@ -11,6 +11,8 @@ from .helpers import (
     vanishing_polynomial,
     get_permutation_part,
     compute_satisfiability_polynomial,
+    compute_t2_evalutaion,
+    compute_t3_evaluation,
 )
 
 
@@ -56,49 +58,33 @@ def prove(prover_input: ProverInput, srs: SRS):
     # Compute quotient challenge
     alpha = custom_hash(commit_a, commit_b, commit_c, commit_z)
 
-    l1 = vanishing / (Polynomial(-Fr(1), Fr(1)) * Fr(n))  # (x^n - 1)/ ((x - 1) * n)
-    satisfiability = compute_satisfiability_polynomial(a, b, c, prover_input, domain_4n)
-    t1 = satisfiability * alpha / vanishing
-
     a_evals = a.fft(domain_4n)
     b_evals = b.fft(domain_4n)
     c_evals = c.fft(domain_4n)
+
+    l1 = vanishing / (Polynomial(-Fr(1), Fr(1)) * Fr(n))  # (x^n - 1)/ ((x - 1) * n)
+    satisfiability_evals = compute_satisfiability_polynomial(
+        a_evals, b_evals, c_evals, prover_input
+    )
+    t1 = domain_4n.inverse_fft(satisfiability_evals) * alpha / vanishing
+
     z_evals = z.fft(domain_4n)
-    print(z_evals)
 
-    alpha2 = alpha ** 2
+    t2_evals = compute_t2_evalutaion(
+        a_evals, b_evals, c_evals, z_evals, alpha, beta, gamma, domain_4n
+    )
+    t2 = domain_4n.inverse_fft(t2_evals)
 
-    t2_ppp = []
-
-    for i, d in enumerate(domain_4n.domain):
-        aa = a_evals[i] + d * beta + gamma
-        bb = b_evals[i] + d * beta * K1 + gamma
-        cc = c_evals[i] + d * beta * K2 + gamma
-
-        t2_ppp.append(aa * bb * cc * z_evals[i] * alpha2)
-
-    t2 = domain_4n.inverse_fft(t2_ppp)
     sigma1, sigma2, sigma3 = prover_input.split_permutations()
 
     z_coset_evals = z.coset_fft(domain_4n)
 
-    ppp = []
+    t3_evals = compute_t3_evaluation(
+         a_evals, b_evals, c_evals, z_coset_evals, alpha, beta, gamma, n, sigma1, sigma2, sigma3
+    )
 
-    for i in range(4 * n):
-        if i < n:
-            aa = a_evals[i] + sigma1[i] * beta + gamma
-            bb = b_evals[i] + sigma2[i] * beta + gamma
-            cc = c_evals[i] + sigma3[i] * beta + gamma
-        else:
-            aa = a_evals[i] + gamma
-            bb = b_evals[i] + gamma
-            cc = c_evals[i] + gamma
-        ppp.append(aa * bb * cc * z_coset_evals[i] * alpha2)
-
-    t3 = domain_4n.inverse_fft(ppp)
+    t3 = domain_4n.inverse_fft(t3_evals)
     t_23 = (t2 - t3) / vanishing
-
-    alpha3 = alpha ** 3
 
     t4 = (z - Fr(1)) * l1 * (alpha ** 3) / vanishing
 
