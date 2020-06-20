@@ -78,3 +78,35 @@ def compute_satisfiability_polynomial(
         result = aev * bev * m + aev * l + bev * r + cev * o + pi + c
         results.append(result)
     return eval_domain.inverse_fft(results)
+
+
+def pre_proving_check(prover_input: ProverInput):
+    n = prover_input.number_of_gates()
+    wa, wb, wc = prover_input.split_witnesses()
+    permutation = prover_input.permutation
+    qm, ql, qr, qo, qc = prover_input.flatten_selectors()
+    public_inputs = prover_input.get_public_input_evaluations()
+    for i in range(n):
+        satisfiability = (
+            wa[i] * wb[i] * qm[i]
+            + wa[i] * ql[i]
+            + wb[i] * qr[i]
+            + wc[i] * qo[i]
+            + public_inputs[i]  # Really?
+            + qc[i]
+        )
+        if satisfiability != 0:
+            raise ValueError(
+                (
+                    f"Satisfiability doesn't meet at gate {i}.\n"
+                    f"Expect: a * b * qm + a * ql + b * qr + c * qo + pi + qc == 0\n"
+                    f"Got:    {wa[i]} * {wb[i]} * {qm[i]} + {wa[i]} * {ql[i]} + {wb[i]} * {qr[i]} + {wc[i]} * {qo[i]} + {public_inputs[i]} + {qc[i]} != 0"
+                )
+            )
+    witnesses = wa + wb + wc
+    for i, p in enumerate(permutation):
+        wi, wp = witnesses[i], witnesses[p]
+        if wi != wp:
+            raise ValueError(
+                f"Bad permutation {i} -> {p}, where witnesses are {wi} and {wp}"
+            )

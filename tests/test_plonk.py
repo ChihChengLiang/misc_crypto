@@ -16,7 +16,16 @@ from misc_crypto.plonk.commitment import (
 from misc_crypto.plonk.constraint import circuit
 
 from misc_crypto.plonk.prover import prove
+from misc_crypto.plonk.helpers import pre_proving_check
 import pytest
+
+
+class F13(FQ):
+    field_modulus = 13
+
+
+class F337(FQ):
+    field_modulus = 337
 
 
 def test_polynomial():
@@ -64,9 +73,6 @@ def test_division():
     a = Polynomial(1, 3, 3, 1)
     b = Polynomial(1, 2, 1)
     assert a / b == Polynomial(1, 1)
-
-    class F13(FQ):
-        field_modulus = 13
 
     # (x^n -1) / (n*(x-1)) == (1/n)(x^(n-1) +... + 1)
     assert Polynomial(F13(-1), F13(0), F13(0), F13(0), F13(1)) / (
@@ -142,8 +148,6 @@ def test_roots_of_unity():
 
 
 def test_fft():
-    class F337(FQ):
-        field_modulus = 337
 
     p = Polynomial(3, 1, 4, 1, 5, 9, 2, 6)
     domain = EvaluationDomain(domain=[F337(85) ** i for i in range(8)])
@@ -186,6 +190,7 @@ def test_prover():
     input_mapping = {"x": 3, "const": 5, "y": 35}
     c.calculate_witness(input_mapping)
     prover_input = c.get_prover_input()
+    assert pre_proving_check(prover_input) is None
 
     proof = tuple(prove(prover_input, srs))
     print(proof)
