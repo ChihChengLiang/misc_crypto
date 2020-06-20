@@ -164,10 +164,14 @@ def test_fft_2():
     assert ed.inverse_fft(evaluations).fft(ed) == evaluations
 
 
-def test_permutation_polynomial_evalutations():
-    class F13(FQ):
-        field_modulus = 13
+def test_coset_fft():
+    ed = EvaluationDomain(domain=[F337(85) ** i for i in range(8)])
+    p = Polynomial(3, 1, 4, 1, 5, 9, 2)
+    assert p.fft(ed) == [25, 62, 323, 247, 3, 189, 18, 168]
+    assert p.coset_fft(ed) == [62, 323, 247, 3, 189, 18, 168, 25]
 
+
+def test_permutation_polynomial_evalutations():
     beta = F13(3)
     gamma = F13(5)
     f_evaluations = [F13(7), F13(8), F13(7)]
