@@ -179,6 +179,21 @@ class Polynomial:
         evaluations = fft(self.coefficients, evaluation_domain.domain)
         return evaluations
 
+    def coset_fft(self, evaluation_domain: EvaluationDomain) -> Sequence[FieldElement]:
+        """
+        Perform fft to P(xd), where d is the generator of the domain
+        Say P(x) = ax^2 + bx + c
+        Then P(xd) = a (xd)^2 + b(xd) + c = (a d^2)x^2 + (bd)x + c
+        """
+        d = evaluation_domain.domain[1]
+        _coeff = []
+        power = 1
+        for c in self.coefficients:
+            _coeff.append(c * power)
+            power *= d
+        evaluations = fft(_coeff, evaluation_domain.domain)
+        return evaluations
+
 
 def lagrange(x: Sequence[FieldElement], y: Sequence[FieldElement]) -> Polynomial:
     if len(x) != len(y):

@@ -31,7 +31,7 @@ def commit(f: Polynomial, srs: SRS) -> "G1":
     if len_coeff > len_powers_of_g1:
         raise ValueError(
             (
-                "The order of polynomial is too high,"
+                "The degree of polynomial is too high,"
                 "expect len(f.coefficients)<=len(srs.powers_of_g1)",
                 f"got len(f.coefficients)={len_coeff} and len(srs.powers_of_g1)={len_powers_of_g1}",
             )

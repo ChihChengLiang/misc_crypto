@@ -53,8 +53,8 @@ def get_permutation_part(
     s_id_3 = [K2 * d for d in eval_domain.domain]
 
     evaluations_1 = permutation_polynomial_evalutations(beta, gamma, a, s_id_1, sigma_1)
-    evaluations_2 = permutation_polynomial_evalutations(beta, gamma, a, s_id_2, sigma_2)
-    evaluations_3 = permutation_polynomial_evalutations(beta, gamma, a, s_id_3, sigma_3)
+    evaluations_2 = permutation_polynomial_evalutations(beta, gamma, b, s_id_2, sigma_2)
+    evaluations_3 = permutation_polynomial_evalutations(beta, gamma, c, s_id_3, sigma_3)
 
     products = [
         ev_1 * ev_2 * ev_3
@@ -63,18 +63,100 @@ def get_permutation_part(
     return products
 
 
-def compute_satisfication_polynomial(
-    a, b, c, prover_input: ProverInput, eval_domain: EvaluationDomain
+def compute_satisfiability_polynomial(
+    a_evals, b_evals, c_evals, prover_input: ProverInput
 ) -> Polynomial:
     qm, ql, qr, qo, qc = prover_input.flatten_selectors()
     public_inputs_evaluations = prover_input.get_public_input_evaluations()
-    a_evals = a.fft(eval_domain)
-    b_evals = b.fft(eval_domain)
-    c_evals = c.fft(eval_domain)
     results = []
     for aev, bev, cev, m, l, r, o, c, pi in zip(
         a_evals, b_evals, c_evals, qm, ql, qr, qo, qc, public_inputs_evaluations
     ):
         result = aev * bev * m + aev * l + bev * r + cev * o + pi + c
         results.append(result)
-    return eval_domain.inverse_fft(results)
+    return results
+
+
+def compute_t2_evalutaion(
+    a_evals,
+    b_evals,
+    c_evals,
+    z_evals,
+    alpha,
+    beta,
+    gamma,
+    evalutaion_domain: EvaluationDomain,
+):
+    results = []
+    alpha_square = alpha * alpha
+
+    for a, b, c, z, d in zip(
+        a_evals, b_evals, c_evals, z_evals, evalutaion_domain.domain
+    ):
+        aa = a + d * beta + gamma
+        bb = b + d * beta * K1 + gamma
+        cc = c + d * beta * K2 + gamma
+
+        results.append(aa * bb * cc * z * alpha_square)
+    return results
+
+
+def compute_t3_evaluation(
+    a_evals,
+    b_evals,
+    c_evals,
+    z_coset_evals,
+    alpha,
+    beta,
+    gamma,
+    n,
+    sigma1,
+    sigma2,
+    sigma3,
+):
+    results = []
+    alpha_square = alpha * alpha
+
+    for i in range(4 * n):
+        if i < n:
+            aa = a_evals[i] + sigma1[i] * beta + gamma
+            bb = b_evals[i] + sigma2[i] * beta + gamma
+            cc = c_evals[i] + sigma3[i] * beta + gamma
+        else:
+            aa = a_evals[i] + gamma
+            bb = b_evals[i] + gamma
+            cc = c_evals[i] + gamma
+        results.append(aa * bb * cc * z_coset_evals[i] * alpha_square)
+    return results
+
+
+def pre_proving_check(prover_input: ProverInput):
+    n = prover_input.number_of_gates()
+    wa, wb, wc = prover_input.split_witnesses()
+    permutation = prover_input.permutation
+    qm, ql, qr, qo, qc = prover_input.flatten_selectors()
+    public_inputs = prover_input.get_public_input_evaluations()
+    for i in range(n):
+        satisfiability = (
+            wa[i] * wb[i] * qm[i]
+            + wa[i] * ql[i]
+            + wb[i] * qr[i]
+            + wc[i] * qo[i]
+            + public_inputs[i]  # Really?
+            + qc[i]
+        )
+        if satisfiability != 0:
+            raise ValueError(
+                (
+                    f"Satisfiability doesn't meet at gate {i}.\n"
+                    f"Expect: a * b * qm + a * ql + b * qr + c * qo + pi + qc == 0\n"
+                    f"Got:    {wa[i]} * {wb[i]} * {qm[i]} + {wa[i]} * {ql[i]} + {wb[i]} * {qr[i]} + {wc[i]} * {qo[i]} + {public_inputs[i]} + {qc[i]} != 0"
+                )
+            )
+    witnesses = wa + wb + wc
+    for i, p in enumerate(permutation):
+        wi, wp = witnesses[i], witnesses[p]
+        if wi != wp:
+            raise ValueError(
+                f"Bad permutation {i} -> {p}, where witnesses are {wi} and {wp}"
+            )

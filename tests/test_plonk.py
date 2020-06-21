@@ -16,7 +16,16 @@ from misc_crypto.plonk.commitment import (
 from misc_crypto.plonk.constraint import circuit
 
 from misc_crypto.plonk.prover import prove
+from misc_crypto.plonk.helpers import pre_proving_check
 import pytest
+
+
+class F13(FQ):
+    field_modulus = 13
+
+
+class F337(FQ):
+    field_modulus = 337
 
 
 def test_polynomial():
@@ -64,9 +73,6 @@ def test_division():
     a = Polynomial(1, 3, 3, 1)
     b = Polynomial(1, 2, 1)
     assert a / b == Polynomial(1, 1)
-
-    class F13(FQ):
-        field_modulus = 13
 
     # (x^n -1) / (n*(x-1)) == (1/n)(x^(n-1) +... + 1)
     assert Polynomial(F13(-1), F13(0), F13(0), F13(0), F13(1)) / (
@@ -142,8 +148,6 @@ def test_roots_of_unity():
 
 
 def test_fft():
-    class F337(FQ):
-        field_modulus = 337
 
     p = Polynomial(3, 1, 4, 1, 5, 9, 2, 6)
     domain = EvaluationDomain(domain=[F337(85) ** i for i in range(8)])
@@ -160,10 +164,14 @@ def test_fft_2():
     assert ed.inverse_fft(evaluations).fft(ed) == evaluations
 
 
-def test_permutation_polynomial_evalutations():
-    class F13(FQ):
-        field_modulus = 13
+def test_coset_fft():
+    ed = EvaluationDomain(domain=[F337(85) ** i for i in range(8)])
+    p = Polynomial(3, 1, 4, 1, 5, 9, 2)
+    assert p.fft(ed) == [25, 62, 323, 247, 3, 189, 18, 168]
+    assert p.coset_fft(ed) == [62, 323, 247, 3, 189, 18, 168, 25]
 
+
+def test_permutation_polynomial_evalutations():
     beta = F13(3)
     gamma = F13(5)
     f_evaluations = [F13(7), F13(8), F13(7)]
@@ -180,12 +188,13 @@ def test_permutation_polynomial_evalutations():
 @pytest.mark.xfail(reason="Work in progress")
 def test_prover():
 
-    srs = srs_setup(64, 5)
+    srs = srs_setup(32, 5)
 
     c = circuit()
     input_mapping = {"x": 3, "const": 5, "y": 35}
     c.calculate_witness(input_mapping)
     prover_input = c.get_prover_input()
+    assert pre_proving_check(prover_input) is None
 
     proof = tuple(prove(prover_input, srs))
     print(proof)

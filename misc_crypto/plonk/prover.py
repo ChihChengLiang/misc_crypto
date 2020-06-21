@@ -10,7 +10,9 @@ from .helpers import (
     compute_permutation_challenges,
     vanishing_polynomial,
     get_permutation_part,
-    compute_satisfication_polynomial,
+    compute_satisfiability_polynomial,
+    compute_t2_evalutaion,
+    compute_t3_evaluation,
 )
 
 
@@ -21,16 +23,17 @@ def get_public_input(witnesses):
 def prove(prover_input: ProverInput, srs: SRS):
     n = prover_input.number_of_gates()
     witnesses = prover_input.witnesses
-    # Make the domain larger just in case
-    eval_domain = EvaluationDomain.from_roots_of_unity(3 * n)
+    domain_n = EvaluationDomain.from_roots_of_unity(n)
+    domain_2n = EvaluationDomain.from_roots_of_unity(2 * n)
+    domain_4n = EvaluationDomain.from_roots_of_unity(4 * n)
     vanishing = vanishing_polynomial(n)
 
     # TODO: make it random
     b1, b2, b3, b4, b5, b6, b7, b8, b9 = [Fr(i) for i in range(9)]
 
-    a = Polynomial(b2, b1) * vanishing + eval_domain.inverse_fft(witnesses.a)
-    b = Polynomial(b4, b3) * vanishing + eval_domain.inverse_fft(witnesses.b)
-    c = Polynomial(b6, b5) * vanishing + eval_domain.inverse_fft(witnesses.c)
+    a = Polynomial(b2, b1) * vanishing + domain_4n.inverse_fft(witnesses.a)
+    b = Polynomial(b4, b3) * vanishing + domain_4n.inverse_fft(witnesses.b)
+    c = Polynomial(b6, b5) * vanishing + domain_4n.inverse_fft(witnesses.c)
 
     commit_a = commit(a, srs)
     commit_b = commit(b, srs)
@@ -44,9 +47,9 @@ def prove(prover_input: ProverInput, srs: SRS):
     )
 
     # compute permutation polynomial
-    evalutations = get_permutation_part(prover_input, beta, gamma, eval_domain)
-    z = Polynomial(b9, b8, b7) * vanishing + eval_domain.inverse_fft(evalutations)
-
+    evalutations = get_permutation_part(prover_input, beta, gamma, domain_4n)
+    noise = Polynomial(b9, b8, b7) * vanishing
+    z = domain_4n.inverse_fft(evalutations)  # + noise
     commit_z = commit(z, srs)
 
     # Second output
@@ -55,30 +58,38 @@ def prove(prover_input: ProverInput, srs: SRS):
     # Compute quotient challenge
     alpha = custom_hash(commit_a, commit_b, commit_c, commit_z)
 
-    l1 = vanishing / (Polynomial(-1, 1) * n)  # (x^n - 1)/ ((x - 1) * n)
-    satisfication = compute_satisfication_polynomial(a, b, c, prover_input, eval_domain)
-    t1 = satisfication * alpha / vanishing
+    a_evals = a.fft(domain_4n)
+    b_evals = b.fft(domain_4n)
+    c_evals = c.fft(domain_4n)
 
-    t2 = (
-        (a + Polynomial(gamma, beta))
-        * (b + Polynomial(gamma, beta * K1))
-        * (c + Polynomial(gamma, beta * K2))
-        * z
-        * alpha ** 2
-        / vanishing
+    l1 = vanishing / (Polynomial(-Fr(1), Fr(1)) * Fr(n))  # (x^n - 1)/ ((x - 1) * n)
+    satisfiability_evals = compute_satisfiability_polynomial(
+        a_evals, b_evals, c_evals, prover_input
     )
-    t3 = (
-        (a + beta * sigma1 + gamma)
-        * (b + beta * sigma2 + gamma)
-        * (c + beta * sigma3 + gamma)
-        * z.shift(1)
-        * alpha ** 2
-        / vanishing
+    t1 = domain_4n.inverse_fft(satisfiability_evals) * alpha / vanishing
+
+    z_evals = z.fft(domain_4n)
+
+    t2_evals = compute_t2_evalutaion(
+        a_evals, b_evals, c_evals, z_evals, alpha, beta, gamma, domain_4n
     )
-    t4 = (z - 1) * l1 * alpha ** 3 / vanishing
+    t2 = domain_4n.inverse_fft(t2_evals)
+
+    sigma1, sigma2, sigma3 = prover_input.split_permutations()
+
+    z_coset_evals = z.coset_fft(domain_4n)
+
+    t3_evals = compute_t3_evaluation(
+         a_evals, b_evals, c_evals, z_coset_evals, alpha, beta, gamma, n, sigma1, sigma2, sigma3
+    )
+
+    t3 = domain_4n.inverse_fft(t3_evals)
+    t_23 = (t2 - t3) / vanishing
+
+    t4 = (z - Fr(1)) * l1 * (alpha ** 3) / vanishing
 
     # Compute quotient polynomial
-    t = t1 + t2 - t3 + t4
+    t = t1 + t_23 + t4
     coeff = t.coefficients
     t_lo = Polynomial(*coeff[:n])
     t_mid = Polynomial(*coeff[n : 2 * n])
