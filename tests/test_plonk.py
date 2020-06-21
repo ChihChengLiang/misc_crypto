@@ -185,7 +185,7 @@ def test_permutation_polynomial_evalutations():
     assert evals == [1, 1, 4]
 
 
-# @pytest.mark.xfail(reason="Work in progress")
+@pytest.mark.xfail(reason="Work in progress")
 def test_prover():
 
     srs = srs_setup(32, 5)
