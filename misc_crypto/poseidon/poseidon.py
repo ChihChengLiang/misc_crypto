@@ -1,4 +1,4 @@
-from typing import Tuple, Iterator, Sequence
+from typing import Tuple, Sequence
 from .constants import DEFAULT_SEED
 from .fields import Fr
 from .utils import get_constants, get_matrix, recommend_parameter

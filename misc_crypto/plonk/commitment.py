@@ -43,7 +43,10 @@ def commit(f: Polynomial, srs: SRS) -> "G1":
 
 
 def create_witness_same_z(
-    polynomials: Sequence[Polynomial], gamma: FieldElement, z: FieldElement, srs: SRS,
+    polynomials: Sequence[Polynomial],
+    gamma: FieldElement,
+    z: FieldElement,
+    srs: SRS,
 ) -> "G1":
     h = Polynomial(Fr.zero())
     power_of_gamma = 1

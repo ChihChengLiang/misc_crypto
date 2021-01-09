@@ -1,5 +1,3 @@
-import pytest
-
 from misc_crypto.utils.assembly import Contract
 
 

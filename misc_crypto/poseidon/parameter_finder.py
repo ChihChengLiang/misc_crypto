@@ -7,6 +7,7 @@ M = 128  # bit security
 # log(curve_order, 2)
 n = 254
 
+
 # interpolation
 def check1(t, rf, rp):
     return rf + rp > log(2, 5) * min(n, M) + log(t, 2)

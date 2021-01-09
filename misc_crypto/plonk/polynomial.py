@@ -87,7 +87,8 @@ class Polynomial:
         min_degree = min(self.degree, other.degree)
         coefficients = (
             tuple(
-                l + s for l, s in zip(long_poly.coefficients, short_poly.coefficients)
+                _l + _s
+                for _l, _s in zip(long_poly.coefficients, short_poly.coefficients)
             )
             + long_poly.coefficients[min_degree:]
         )

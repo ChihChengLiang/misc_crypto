@@ -1,9 +1,9 @@
-from .field import Fr, FieldElement, roots_of_unity
-from typing import Sequence
-from .polynomial import Polynomial, lagrange, EvaluationDomain
+# flake8: noqa
+
+from .field import Fr
+from .polynomial import Polynomial, EvaluationDomain
 from .commitment import commit, SRS
 from .constraint import ProverInput
-from .constants import K1, K2
 
 from .helpers import (
     custom_hash,
@@ -24,8 +24,6 @@ def prove(prover_input: ProverInput, srs: SRS):
     n = prover_input.number_of_gates()
     witnesses = prover_input.witnesses
     domain_n = EvaluationDomain.from_roots_of_unity(n)
-    domain_2n = EvaluationDomain.from_roots_of_unity(2 * n)
-    domain_4n = EvaluationDomain.from_roots_of_unity(4 * n)
     vanishing = vanishing_polynomial(n)
 
     # TODO: make it random
@@ -48,7 +46,6 @@ def prove(prover_input: ProverInput, srs: SRS):
 
     # compute permutation polynomial
     evalutations = get_permutation_part(prover_input, beta, gamma, domain_4n)
-    noise = Polynomial(b9, b8, b7) * vanishing
     z = domain_4n.inverse_fft(evalutations)  # + noise
     commit_z = commit(z, srs)
 
@@ -80,7 +77,17 @@ def prove(prover_input: ProverInput, srs: SRS):
     z_coset_evals = z.coset_fft(domain_4n)
 
     t3_evals = compute_t3_evaluation(
-         a_evals, b_evals, c_evals, z_coset_evals, alpha, beta, gamma, n, sigma1, sigma2, sigma3
+        a_evals,
+        b_evals,
+        c_evals,
+        z_coset_evals,
+        alpha,
+        beta,
+        gamma,
+        n,
+        sigma1,
+        sigma2,
+        sigma3,
     )
 
     t3 = domain_4n.inverse_fft(t3_evals)
