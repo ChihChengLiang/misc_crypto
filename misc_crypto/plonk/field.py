@@ -1,5 +1,5 @@
-from typing import NewType, Protocol, Union, Tuple
-from py_ecc.optimized_bn128 import (
+from typing import Protocol, Union, Tuple
+from py_ecc.optimized_bn128 import (  # noqa: F401
     pairing,
     multiply,
     add,
@@ -24,8 +24,16 @@ IntOrFE = Union[int, "FieldElement"]
 
 def pairing_check(G1_left, G2_left, G1_right, G2_right) -> bool:
     final_exponentiation = final_exponentiate(
-        pairing(G2_left, G1_left, final_exponentiate=False,)
-        * pairing(G2_right, G1_right, final_exponentiate=False,)
+        pairing(
+            G2_left,
+            G1_left,
+            final_exponentiate=False,
+        )
+        * pairing(
+            G2_right,
+            G1_right,
+            final_exponentiate=False,
+        )
     )
     return final_exponentiation == FQ12.one()
 

@@ -1,10 +1,9 @@
 # fan-in   2 arithmetic circuits
 # fan-out  n gates and m wires
 
-from typing import Sequence, Dict, Union, Tuple, NewType
+from typing import Sequence, Union, NewType
 from .field import FieldElement
 from dataclasses import dataclass
-from enum import Enum
 from .utils import next_power_of_2
 
 
@@ -125,7 +124,7 @@ class Gate:
 
     def feed_output(self):
         calculated_output = self.calculate_output()
-        if self.out_wire.value != None:
+        if self.out_wire.value is not None:
             raise ValueError(
                 f"Contradiction, outwire has value {self.out_wire.value}, but this gate is feeding it {calculated_output}"
             )
@@ -133,16 +132,16 @@ class Gate:
             self.out_wire.value = calculated_output
 
     def calculate_output(self):
-        raise NotImplemented
+        raise NotImplementedError
 
     def return_wire_value(self):
-        raise NotImplemented
+        raise NotImplementedError
 
     def return_wire_index(self):
-        raise NotImplemented
+        raise NotImplementedError
 
     def get_selector(self):
-        raise NotImplemented
+        raise NotImplementedError
 
 
 class TwoFanInGate(Gate):
@@ -156,7 +155,7 @@ class TwoFanInGate(Gate):
 
     @classmethod
     def operate(cls, left_value, right_value):
-        raise NotImplemented
+        raise NotImplementedError
 
     def calculate_output(self):
         return self.operate(self.left.value, self.right.value)
@@ -189,7 +188,9 @@ class AddGate(TwoFanInGate):
 class PublicInputGate(Gate):
     in_wire: "Wire"
 
-    def calculate_output(self,):
+    def calculate_output(
+        self,
+    ):
         return self.in_wire.value
 
     def return_wire_value(self):
@@ -211,7 +212,7 @@ class DummyGate(Gate):
     def feed_output(self):
         pass
 
-    def calculate_output(self,):
+    def calculate_output(self):
         return 0
 
     def return_wire_value(self):

@@ -1,9 +1,6 @@
 from misc_crypto.utils.assembly import Contract
-from .utils import get_constants, get_matrix
-from eth_utils import decode_hex
-from typing import Union, Tuple, Sequence
+from typing import Union, Sequence
 from .fields import Fr
-from .constants import DEFAULT_SEED
 
 # Note to reviewers:
 # This module contains evm assemply operations.

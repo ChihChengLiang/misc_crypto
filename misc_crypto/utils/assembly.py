@@ -1,5 +1,5 @@
 from eth_utils import encode_hex, decode_hex, is_hex
-from typing import List, Dict, Sequence, Union, Optional
+from typing import List, Dict, Union
 
 OPCODES = {
     "stop": 0x00,
