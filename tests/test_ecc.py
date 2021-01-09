@@ -30,3 +30,82 @@ def test_G2(backend):
     assert G2.multiply(9).add(G2.multiply(5)).eq(G2.multiply(12).add(G2.multiply(2)))
     assert G2.multiply(backend.curve_order).is_inf()
     assert not G2.multiply(2 * backend.field_modulus - backend.curve_order).is_inf()
+
+
+@pytest.mark.parametrize("backend", (BLS12381Backend, BN254Backend))
+def test_pairing_negative_G1(backend):
+    G1 = backend.G1()
+    G2 = backend.G2()
+    pairing = backend.pairing
+    p1 = pairing(G1, G2)
+    pn1 = pairing(G1.neg(), G2)
+
+    assert p1 * pn1 == backend.FQ12One()
+
+
+@pytest.mark.parametrize("backend", (BLS12381Backend, BN254Backend))
+def test_pairing_negative_G2(backend):
+    G1 = backend.G1()
+    G2 = backend.G2()
+    pairing = backend.pairing
+
+    p1 = pairing(G1, G2)
+    pn1 = pairing(G1.neg(), G2)
+    np1 = pairing(G1, G2.neg())
+
+    assert p1 * np1 == backend.FQ12One()
+    assert pn1 == np1
+
+
+@pytest.mark.parametrize("backend", (BLS12381Backend, BN254Backend))
+def test_pairing_output_order(backend):
+    p1 = backend.pairing(backend.G1(), backend.G2())
+    assert p1 ** backend.curve_order == backend.FQ12One()
+
+
+@pytest.mark.parametrize("backend", (BLS12381Backend, BN254Backend))
+def test_pairing_bilinearity_on_G1(backend):
+    G1 = backend.G1()
+    G2 = backend.G2()
+    pairing = backend.pairing
+
+    p1 = pairing(G1, G2)
+    p2 = pairing(G1.multiply(2), G2)
+
+    assert p1 * p1 == p2
+
+
+@pytest.mark.parametrize("backend", (BLS12381Backend, BN254Backend))
+def test_pairing_is_non_degenerate(backend):
+    G1 = backend.G1()
+    G2 = backend.G2()
+    pairing = backend.pairing
+
+    p1 = pairing(G1, G2)
+    p2 = pairing(G1.multiply(2), G2)
+    np1 = pairing(G1, G2.neg())
+
+    assert p1 != p2 and p1 != np1 and p2 != np1
+
+
+@pytest.mark.parametrize("backend", (BLS12381Backend, BN254Backend))
+def test_pairing_bilinearity_on_G2(backend):
+    G1 = backend.G1()
+    G2 = backend.G2()
+    pairing = backend.pairing
+
+    p1 = pairing(G1, G2)
+    p2 = pairing(G1, G2.multiply(2))
+
+    assert p1 * p1 == p2
+
+
+@pytest.mark.parametrize("backend", (BLS12381Backend, BN254Backend))
+def test_pairing_composit_check(backend):
+    G1 = backend.G1()
+    G2 = backend.G2()
+    pairing = backend.pairing
+
+    p3 = pairing(G1.multiply(37), G2.multiply(27))
+    po3 = pairing(G1.multiply(999), G2)
+    assert p3 == po3

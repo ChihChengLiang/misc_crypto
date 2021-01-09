@@ -82,4 +82,4 @@ class BN254Backend:
 
     @staticmethod
     def pairing(G1: "G1", G2: "G2", final_exponentiate: bool = True) -> bool:
-        return pairing(G2, G1, final_exponentiate)
+        return pairing(G2.py_ecc_object, G1.py_ecc_object, final_exponentiate)
