@@ -15,6 +15,9 @@ py-ecc = ">=4.0.0<5"
 
 [tool.poetry.dev-dependencies]
 pytest = "^6.2.1"
+web3 = {extras = ["tester"], version = "^5.14.0"}
+eth-tester = "^0.5.0-beta.3"
+py-evm = "^0.3.0-alpha.20"
 
 [build-system]
 requires = ["poetry-core>=1.0.0"]
