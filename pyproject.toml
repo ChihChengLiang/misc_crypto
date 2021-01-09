@@ -18,6 +18,10 @@ pytest = "^6.2.1"
 web3 = {extras = ["tester"], version = "^5.14.0"}
 eth-tester = "^0.5.0-beta.3"
 py-evm = "^0.3.0-alpha.20"
+black = "20.8b1"
+flake8 = "3.8.4"
+flake8-black = "0.2.1"
+flake8-import-order = "0.18.1"
 
 [build-system]
 requires = ["poetry-core>=1.0.0"]
