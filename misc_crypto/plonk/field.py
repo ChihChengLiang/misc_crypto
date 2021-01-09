@@ -1,10 +1,16 @@
 from typing import Protocol, Union, Tuple
-from py_ecc.optimized_bn128 import (
+from py_ecc.optimized_bn128 import (  # noqa: F401
     pairing,
+    multiply,
+    add,
+    G1,
+    G2,
     FQ,
+    neg,
     curve_order,
     FQ12,
     final_exponentiate,
+    Z1,
 )
 
 
