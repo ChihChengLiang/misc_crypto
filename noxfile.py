@@ -37,8 +37,9 @@ def black(session):
 
 @nox.session(python=python_version)
 def tests(session):
+    args = session.posargs
     session.run("poetry", "install", external=True)
-    session.run("pytest")
+    session.run("pytest", *args)
 
 
 def install_with_constraints(session, *args, **kwargs):
