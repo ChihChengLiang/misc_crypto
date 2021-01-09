@@ -4,7 +4,7 @@ from misc_crypto.ecc import BLS12381Backend, BN254Backend
 
 @pytest.mark.parametrize("backend", (BLS12381Backend, BN254Backend))
 def test_Fq(backend):
-    Fq = backend.Fq()
+    Fq = backend.Fq
     assert Fq(2) * Fq(2) == Fq(4)
     assert Fq(2) / Fq(7) + Fq(9) / Fq(7) == Fq(11) / Fq(7)
     assert Fq(2) * Fq(7) + Fq(9) * Fq(7) == Fq(11) * Fq(7)
@@ -14,7 +14,7 @@ def test_Fq(backend):
 
 @pytest.mark.parametrize("backend", (BLS12381Backend, BN254Backend))
 def test_G1(backend):
-    G1 = backend.G1()
+    G1 = backend.get_G1()
 
     assert G1.double().add(G1).add(G1).eq(G1.double().double())
     assert not G1.double().eq(G1)
@@ -24,7 +24,7 @@ def test_G1(backend):
 
 @pytest.mark.parametrize("backend", (BLS12381Backend, BN254Backend))
 def test_G2(backend):
-    G2 = backend.G2()
+    G2 = backend.get_G2()
     assert G2.double().add(G2).add(G2).eq(G2.double().double())
     assert not G2.double().eq(G2)
     assert G2.multiply(9).add(G2.multiply(5)).eq(G2.multiply(12).add(G2.multiply(2)))
@@ -34,8 +34,8 @@ def test_G2(backend):
 
 @pytest.mark.parametrize("backend", (BLS12381Backend, BN254Backend))
 def test_pairing_negative_G1(backend):
-    G1 = backend.G1()
-    G2 = backend.G2()
+    G1 = backend.get_G1()
+    G2 = backend.get_G2()
     pairing = backend.pairing
     p1 = pairing(G1, G2)
     pn1 = pairing(G1.neg(), G2)
@@ -45,8 +45,8 @@ def test_pairing_negative_G1(backend):
 
 @pytest.mark.parametrize("backend", (BLS12381Backend, BN254Backend))
 def test_pairing_negative_G2(backend):
-    G1 = backend.G1()
-    G2 = backend.G2()
+    G1 = backend.get_G1()
+    G2 = backend.get_G2()
     pairing = backend.pairing
 
     p1 = pairing(G1, G2)
@@ -59,14 +59,14 @@ def test_pairing_negative_G2(backend):
 
 @pytest.mark.parametrize("backend", (BLS12381Backend, BN254Backend))
 def test_pairing_output_order(backend):
-    p1 = backend.pairing(backend.G1(), backend.G2())
+    p1 = backend.pairing(backend.get_G1(), backend.get_G2())
     assert p1 ** backend.curve_order == backend.FQ12One()
 
 
 @pytest.mark.parametrize("backend", (BLS12381Backend, BN254Backend))
 def test_pairing_bilinearity_on_G1(backend):
-    G1 = backend.G1()
-    G2 = backend.G2()
+    G1 = backend.get_G1()
+    G2 = backend.get_G2()
     pairing = backend.pairing
 
     p1 = pairing(G1, G2)
@@ -77,8 +77,8 @@ def test_pairing_bilinearity_on_G1(backend):
 
 @pytest.mark.parametrize("backend", (BLS12381Backend, BN254Backend))
 def test_pairing_is_non_degenerate(backend):
-    G1 = backend.G1()
-    G2 = backend.G2()
+    G1 = backend.get_G1()
+    G2 = backend.get_G2()
     pairing = backend.pairing
 
     p1 = pairing(G1, G2)
@@ -90,8 +90,8 @@ def test_pairing_is_non_degenerate(backend):
 
 @pytest.mark.parametrize("backend", (BLS12381Backend, BN254Backend))
 def test_pairing_bilinearity_on_G2(backend):
-    G1 = backend.G1()
-    G2 = backend.G2()
+    G1 = backend.get_G1()
+    G2 = backend.get_G2()
     pairing = backend.pairing
 
     p1 = pairing(G1, G2)
@@ -102,8 +102,8 @@ def test_pairing_bilinearity_on_G2(backend):
 
 @pytest.mark.parametrize("backend", (BLS12381Backend, BN254Backend))
 def test_pairing_composit_check(backend):
-    G1 = backend.G1()
-    G2 = backend.G2()
+    G1 = backend.get_G1()
+    G2 = backend.get_G2()
     pairing = backend.pairing
 
     p3 = pairing(G1.multiply(37), G2.multiply(27))

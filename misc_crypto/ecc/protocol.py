@@ -1,42 +1,48 @@
-from typing import Protocol, Union
+from typing import Protocol, Union, TypeVar, Type
 
-IntOrFE = Union[int, "FieldElement"]
+
+T = TypeVar("T", bound="FieldElement")
+
+IntOrFE = Union[int, T]
 
 
 class FieldElement(Protocol):
-    def __add__(self, other: IntOrFE) -> "FieldElement":
+    def __add__(self: T, other: IntOrFE) -> T:
         ...
 
-    def __mul__(self, other: IntOrFE) -> "FieldElement":
+    def __mul__(self: T, other: IntOrFE) -> T:
         ...
 
-    def __sub__(self, other: IntOrFE) -> "FieldElement":
+    def __sub__(self: T, other: IntOrFE) -> T:
         ...
 
-    def __div__(self, other: IntOrFE) -> "FieldElement":
+    def __div__(self: T, other: IntOrFE) -> T:
         ...
 
-    def __rmul__(self, other: IntOrFE) -> "FieldElement":
+    def __rmul__(self: T, other: IntOrFE) -> T:
         ...
 
-    def __radd__(self, other: IntOrFE) -> "FieldElement":
+    def __radd__(self: T, other: IntOrFE) -> T:
         ...
 
-    def __rsub__(self, other: IntOrFE) -> "FieldElement":
+    def __rsub__(self: T, other: IntOrFE) -> T:
         ...
 
-    def __pow__(self, other: int) -> "FieldElement":
+    def __pow__(self: T, other: int) -> T:
         ...
 
-    def __neg__(self) -> "FieldElement":
+    def __neg__(self: T) -> T:
+        ...
+
+    def __int__(self: T) -> int:
         ...
 
     @classmethod
-    def one(cls) -> "FieldElement":
+    def one(cls: Type[T]) -> T:
         ...
 
     @classmethod
-    def zero(cls) -> "FieldElement":
+    def zero(cls: Type[T]) -> T:
         ...
 
 
@@ -77,23 +83,26 @@ class Backend(Protocol):
     field_modulus: int
 
     @classmethod
-    def Fq(cls) -> "FieldElement":
+    def Fq(cls, n: int) -> "FieldElement":
         ...
 
     @classmethod
-    def Fr(cls) -> "FieldElement":
+    def Fr(cls, n: int) -> "FieldElement":
         ...
 
     @classmethod
-    def G1(cls) -> "G1":
+    def get_G1(cls) -> "G1":
         ...
 
     @classmethod
-    def G2(cls) -> "G2":
+    def get_G2(cls) -> "G2":
         ...
 
     @classmethod
     def Z1(cls) -> "G1":
+        ...
+
+    def FQ12One(cls) -> "FQ12":
         ...
 
     @staticmethod
@@ -101,5 +110,5 @@ class Backend(Protocol):
         ...
 
     @staticmethod
-    def pairing(G1: "G1", G2: "G2", final_exponentiate: bool = True) -> bool:
+    def pairing(G1: "G1", G2: "G2", final_exponentiate: bool = True) -> "FQ12":
         ...

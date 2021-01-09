@@ -1,5 +1,5 @@
 from typing import Any
-from misc_crypto.ecc.protocol import FieldElement, IntOrFE, CurvePoint
+from misc_crypto.ecc.protocol import FieldElement, IntOrFE
 from py_ecc.optimized_bls12_381 import (
     field_modulus,
     pairing,
@@ -29,23 +29,31 @@ class WrappedCurvePoint:
     def __init__(self, py_ecc_object: Any):
         self.py_ecc_object = py_ecc_object
 
-    def neg(self) -> "CurvePoint":
+    def neg(self) -> "WrappedCurvePoint":
         return self.__class__(neg(self.py_ecc_object))
 
-    def double(self) -> "CurvePoint":
+    def double(self) -> "WrappedCurvePoint":
         return self.__class__(double(self.py_ecc_object))
 
-    def add(self, other: "CurvePoint") -> "CurvePoint":
+    def add(self, other: "WrappedCurvePoint") -> "WrappedCurvePoint":
         return self.__class__(add(self.py_ecc_object, other.py_ecc_object))
 
-    def multiply(self, n: IntOrFE) -> "CurvePoint":
-        return self.__class__(multiply(self.py_ecc_object, n))
+    def multiply(self, n: IntOrFE) -> "WrappedCurvePoint":
+        return self.__class__(multiply(self.py_ecc_object, int(n)))
 
-    def eq(self, other: "CurvePoint") -> bool:
+    def eq(self, other: "WrappedCurvePoint") -> bool:
         return eq(self.py_ecc_object, other.py_ecc_object)
 
     def is_inf(self) -> bool:
         return is_inf(self.py_ecc_object)
+
+
+class G1(WrappedCurvePoint):
+    ...
+
+
+class G2(WrappedCurvePoint):
+    ...
 
 
 class BLS12381Backend:
@@ -53,24 +61,24 @@ class BLS12381Backend:
     field_modulus = field_modulus
 
     @classmethod
-    def Fq(cls) -> "FieldElement":
-        return FQ
+    def Fq(cls, n: int) -> "FieldElement":
+        return FQ(n)
 
     @classmethod
-    def Fr(cls) -> "FieldElement":
-        return Fr
+    def Fr(cls, n: int) -> "FieldElement":
+        return Fr(n)
 
     @classmethod
-    def G1(cls) -> "G1":
-        return WrappedCurvePoint(BLS12381G1)
+    def get_G1(cls) -> G1:
+        return G1(BLS12381G1)
 
     @classmethod
-    def Z1(cls) -> "G1":
-        return WrappedCurvePoint(Z1)
+    def Z1(cls) -> G1:
+        return G1(Z1)
 
     @classmethod
-    def G2(cls) -> "G2":
-        return WrappedCurvePoint(BLS12381G2)
+    def get_G2(cls) -> G2:
+        return G2(BLS12381G2)
 
     @classmethod
     def FQ12One(cls) -> "FQ12":
@@ -81,5 +89,5 @@ class BLS12381Backend:
         return final_exponentiate(fq12)
 
     @staticmethod
-    def pairing(G1: "G1", G2: "G2", final_exponentiate: bool = True) -> bool:
+    def pairing(G1: "G1", G2: "G2", final_exponentiate: bool = True) -> "FQ12":
         return pairing(G2.py_ecc_object, G1.py_ecc_object, final_exponentiate)
