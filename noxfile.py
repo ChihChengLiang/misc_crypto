@@ -1,7 +1,7 @@
 import nox
 import tempfile
 
-nox.options.sessions = "lint", "tests"
+nox.options.sessions = "lint", "mypy", "tests"
 
 python_version = ["3.8"]
 
@@ -18,6 +18,13 @@ def lint(session):
         "flake8-import-order",
     )
     session.run("flake8", *args)
+
+
+@nox.session(python=python_version)
+def mypy(session):
+    args = session.posargs or locations
+    session.run("poetry", "install", external=True)
+    session.run("mypy", *args)
 
 
 @nox.session(python=python_version)
