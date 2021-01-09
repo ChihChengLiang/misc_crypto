@@ -5,12 +5,13 @@ nox.options.sessions = "lint", "mypy", "tests"
 
 python_version = ["3.8"]
 
-locations = "misc_crypto", "tests", "noxfile.py"
+typecheck_locations = ("misc_crypto",)
+lint_locations = typecheck_locations + ("tests", "noxfile.py")
 
 
 @nox.session(python=python_version)
 def lint(session):
-    args = session.posargs or locations
+    args = session.posargs or lint_locations
     install_with_constraints(
         session,
         "flake8",
@@ -22,14 +23,14 @@ def lint(session):
 
 @nox.session(python=python_version)
 def mypy(session):
-    args = session.posargs or locations
+    args = session.posargs or typecheck_locations
     session.run("poetry", "install", external=True)
     session.run("mypy", *args)
 
 
 @nox.session(python=python_version)
 def black(session):
-    args = session.posargs or locations
+    args = session.posargs or lint_locations
     install_with_constraints(session, "black")
     session.run("black", *args)
 
