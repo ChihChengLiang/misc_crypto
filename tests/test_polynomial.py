@@ -1,3 +1,4 @@
+import pytest
 from misc_crypto.ecc import F337, BLS12381Backend
 from misc_crypto.polynomial.fft import fft, inverse_fft
 from misc_crypto.polynomial.operations import (
@@ -6,6 +7,8 @@ from misc_crypto.polynomial.operations import (
     fft_multiply_many,
     lagrange,
     naive_multiply,
+    euclidean_division,
+    true_division,
 )
 
 
@@ -84,3 +87,17 @@ def test_fft_multiply_many():
     ab = fft_multiply(backend, a, b)
     abc = fft_multiply(backend, ab, c)
     assert fft_multiply_many(backend, [a, b, c]) == abc
+
+
+def test_euclidean_division():
+    a1 = [F337(c) for c in [1, 3, 3, 1]]
+    b1 = [F337(c) for c in [1, 2, 1]]
+    quotient = [1, 1]
+    assert euclidean_division(a1, b1) == (quotient, [0])
+
+    a2 = [F337(c) for c in [7, 5, 3, 1]]
+    assert euclidean_division(a2, b1) == (quotient, [6, 2])
+
+    assert true_division(a1, b1) == quotient
+    with pytest.raises(ValueError):
+        true_division(a2, b1)

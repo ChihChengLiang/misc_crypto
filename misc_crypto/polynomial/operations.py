@@ -1,7 +1,7 @@
 """
 Assumning inputs are all valid polynomial coefficients
 """
-from typing import Sequence, List
+from typing import Sequence, List, Tuple
 from misc_crypto.ecc import FieldElement
 from misc_crypto.polynomial.helpers import next_power_of_2
 from misc_crypto.ecc import roots_of_unity, Backend
@@ -10,9 +10,13 @@ from misc_crypto.polynomial.fft import fft, inverse_fft
 
 def remove_leading_zeros(a: Sequence[FieldElement]) -> List[FieldElement]:
     result = a.copy()
-    while len(a) > 0 and result[-1] == 0:
+    while len(result) > 1 and result[-1] == 0:
         result.pop()
     return result
+
+
+def is_zero(a: Sequence[FieldElement]) -> bool:
+    return len(a) == 1 and a[0] == 0
 
 
 def add_polynomial(
@@ -93,3 +97,41 @@ def fft_multiply_many(
     product_coefficients = inverse_fft(product_evaluations, domain)
 
     return remove_leading_zeros(product_coefficients)
+
+
+def euclidean_division(
+    dividend: Sequence[FieldElement], divisor: Sequence[FieldElement]
+) -> Tuple[List[FieldElement], List[FieldElement]]:
+
+    if is_zero(divisor):
+        raise ZeroDivisionError
+
+    len_divisor = len(divisor)
+    remainder_degree = len(dividend) - len_divisor
+
+    if remainder_degree < 0:
+        raise ValueError("divisor has higher degree:", dividend, divisor)
+
+    # Work with reverse order
+    quotient = []
+    remainder = list(reversed(dividend))
+
+    for _ in range(remainder_degree + 1):
+        m = remainder[0] / divisor[0]
+        affected = [r - m * d for r, d in zip(remainder[1:], divisor[1:])]
+        remainder = affected + remainder[len_divisor:]
+        quotient.append(m)
+
+    return (
+        remove_leading_zeros(list(reversed(quotient))),
+        remove_leading_zeros(list(reversed(remainder))),
+    )
+
+
+def true_division(
+    dividend: Sequence[FieldElement], divisor: Sequence[FieldElement]
+) -> List[FieldElement]:
+    quotient, remainder = euclidean_division(dividend, divisor)
+    if not is_zero(remainder):
+        raise ValueError("Not divisible  remainder", remainder)
+    return quotient
