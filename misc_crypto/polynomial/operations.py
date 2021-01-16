@@ -74,3 +74,22 @@ def fft_multiply(
     product_coefficients = inverse_fft(product_evaluations, domain)
 
     return remove_leading_zeros(product_coefficients)
+
+
+def fft_multiply_many(
+    backend: Backend, ps: Sequence[Sequence[FieldElement]]
+) -> List[FieldElement]:
+    output_degree = sum([len(p) - 1 for p in ps])
+    domain_size = next_power_of_2(output_degree + 1)
+    domain = roots_of_unity(backend, domain_size)
+    evaluations = [fft(p, domain) for p in ps]
+    one = ps[0][0].one()
+    product_evaluations = []
+    for i in range(len(domain)):
+        product = one
+        for evaluation in evaluations:
+            product *= evaluation[i]
+        product_evaluations.append(product)
+    product_coefficients = inverse_fft(product_evaluations, domain)
+
+    return remove_leading_zeros(product_coefficients)

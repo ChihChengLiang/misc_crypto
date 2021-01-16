@@ -3,6 +3,7 @@ from misc_crypto.polynomial.fft import fft, inverse_fft
 from misc_crypto.polynomial.operations import (
     add_polynomial,
     fft_multiply,
+    fft_multiply_many,
     lagrange,
     naive_multiply,
 )
@@ -73,3 +74,13 @@ def test_fft_multiply():
         == fft_multiply(backend, b, a)
         == naive_multiply(a, b)
     )
+
+
+def test_fft_multiply_many():
+    backend = BLS12381Backend
+    a = [backend.Fr(x) for x in [1, 1]]
+    b = [backend.Fr(x) for x in [2, 1]]
+    c = [backend.Fr(x) for x in [3, 1]]
+    ab = fft_multiply(backend, a, b)
+    abc = fft_multiply(backend, ab, c)
+    assert fft_multiply_many(backend, [a, b, c]) == abc
