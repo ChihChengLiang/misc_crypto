@@ -7,6 +7,8 @@ IntOrFE = Union[int, T]
 
 
 class FieldElement(Protocol):
+    field_modulus: int
+
     def __add__(self: T, other: IntOrFE) -> T:
         ...
 
