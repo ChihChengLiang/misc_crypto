@@ -1,6 +1,11 @@
-from misc_crypto.ecc import F337
+from misc_crypto.ecc import F337, BLS12381Backend
 from misc_crypto.polynomial.fft import fft, inverse_fft
-from misc_crypto.polynomial.operations import add_polynomial, lagrange, naive_multiply
+from misc_crypto.polynomial.operations import (
+    add_polynomial,
+    fft_multiply,
+    lagrange,
+    naive_multiply,
+)
 
 
 def test_add_polynomial():
@@ -57,3 +62,14 @@ def test_fft_2():
 
     evaluations = [F337(c) for c in (3, 9, 3, 5, 30, 35, 0, 0)]
     assert fft(inverse_fft(evaluations, domain), domain) == evaluations
+
+
+def test_fft_multiply():
+    backend = BLS12381Backend
+    a = [backend.Fr(c) for c in [1, 2, 3, 4]]
+    b = [backend.Fr(c) for c in [5, 6, 7, 8]]
+    assert (
+        fft_multiply(backend, a, b)
+        == fft_multiply(backend, b, a)
+        == naive_multiply(a, b)
+    )

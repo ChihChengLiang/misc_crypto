@@ -3,6 +3,16 @@ Assumning inputs are all valid polynomial coefficients
 """
 from typing import Sequence, List
 from misc_crypto.ecc import FieldElement
+from misc_crypto.polynomial.helpers import next_power_of_2
+from misc_crypto.ecc import roots_of_unity, Backend
+from misc_crypto.polynomial.fft import fft, inverse_fft
+
+
+def remove_leading_zeros(a: Sequence[FieldElement]) -> List[FieldElement]:
+    result = a.copy()
+    while len(a) > 0 and result[-1] == 0:
+        result.pop()
+    return result
 
 
 def add_polynomial(
@@ -50,3 +60,17 @@ def lagrange(
         basis = [y * b / denominator for b in basis]
         coefficients = add_polynomial(coefficients, basis)
     return coefficients
+
+
+def fft_multiply(
+    backend: Backend, a: Sequence[FieldElement], b: Sequence[FieldElement]
+) -> List[FieldElement]:
+    domain_size = next_power_of_2(len(a) + len(b) - 1)
+    domain = roots_of_unity(backend, domain_size)
+    a_evaluations = fft(a, domain)
+    b_evaluations = fft(b, domain)
+
+    product_evaluations = [_a * _b for _a, _b in zip(a_evaluations, b_evaluations)]
+    product_coefficients = inverse_fft(product_evaluations, domain)
+
+    return remove_leading_zeros(product_coefficients)

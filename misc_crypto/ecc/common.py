@@ -23,5 +23,5 @@ def roots_of_unity(backend: Backend, order: int) -> Tuple[FieldElement, ...]:
     # TODO: Check the multiplicative subgroup must have size  2^n
     # TODO: Support fields other than Fr
     a = backend.Fr(5)
-    p_minus_1 = backend.field_modulus - 1
+    p_minus_1 = a.field_modulus - 1
     return tuple(a ** ((i * p_minus_1) // order) for i in range(order))
