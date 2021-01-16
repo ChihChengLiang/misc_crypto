@@ -18,6 +18,7 @@ from misc_crypto.polynomial.commitments import (
     verify_single,
     prove_multiple,
     verify_multiple,
+    build_polynomial_from_vector,
 )
 
 
@@ -134,4 +135,18 @@ def test_commitments():
 
     zs = [backend.Fr(x) for x in [2, 4, 6]]
     ys, proof = prove_multiple(srs, p, zs)
+    assert verify_multiple(backend, srs, commitment, zs, ys, proof)
+
+
+def test_vector_commitment():
+    backend = BLS12381Backend
+    srs = untrusted_setup(backend, 20)
+    vector = [backend.Fr(v) for v in [55, 66, 55, 100, 21, 1, 2, 3, 4, 5, 891038103]]
+    p = build_polynomial_from_vector(backend, vector)
+
+    commitment = commit(srs, p)
+    zs = [backend.Fr(i) for i in [0, 2, 3, 5, 7]]
+
+    ys, proof = prove_multiple(srs, p, zs)
+    assert ys == [evaluate(p, z) for z in zs]
     assert verify_multiple(backend, srs, commitment, zs, ys, proof)

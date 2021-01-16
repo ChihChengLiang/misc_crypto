@@ -1,4 +1,4 @@
-from typing import Sequence, Tuple
+from typing import Sequence, Tuple, List
 from misc_crypto.ecc import Backend, G1, G2, FieldElement, pairing_check
 import secrets
 from dataclasses import dataclass
@@ -112,3 +112,11 @@ def verify_multiple(
     interpolation_on_G1 = evaluate_on_G1(srs, interpolation)
     c_minus_i = commitment.add(interpolation_on_G1.neg())
     return pairing_check(backend, proof, zs_on_G2, c_minus_i, srs.G2.neg())
+
+
+def build_polynomial_from_vector(
+    backend: Backend, vector: Sequence[FieldElement]
+) -> List[FieldElement]:
+    domain = [backend.Fr(i) for i in range(len(vector))]
+    polynomial = lagrange(domain, vector)
+    return polynomial
