@@ -16,6 +16,8 @@ from misc_crypto.polynomial.commitments import (
     prove_single,
     untrusted_setup,
     verify_single,
+    prove_multiple,
+    verify_multiple,
 )
 
 
@@ -116,10 +118,9 @@ def test_evaluate():
     assert evaluate(p, x) == F337(27)
 
 
-def test_srs():
+def test_commitments():
     backend = BLS12381Backend
     srs = untrusted_setup(backend, 10)
-    print(srs._s)
 
     p = [backend.Fr(x) for x in [1, 2, 3, 4]]
 
@@ -130,3 +131,7 @@ def test_srs():
     y, proof = prove_single(srs, p, z)
 
     assert verify_single(backend, srs, commitment, z, y, proof)
+
+    zs = [backend.Fr(x) for x in [2, 4, 6]]
+    ys, proof = prove_multiple(srs, p, zs)
+    assert verify_multiple(backend, srs, commitment, zs, ys, proof)

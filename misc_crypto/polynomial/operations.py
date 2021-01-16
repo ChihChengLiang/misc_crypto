@@ -145,3 +145,16 @@ def evaluate(p: Sequence[FieldElement], x: FieldElement) -> FieldElement:
         result += coefficient * power
         power *= x
     return result
+
+
+def compute_zero_polynomial(zs: Sequence[FieldElement]) -> List[FieldElement]:
+    z0, z_rest = zs[0], zs[1:]
+    one = z0.one()
+    zero_polynomial = [-z0, one]
+    for z in z_rest:
+        zero_polynomial = naive_multiply(zero_polynomial, [-z, one])
+    return zero_polynomial
+
+
+def negate(p: Sequence[FieldElement]) -> List[FieldElement]:
+    return [-p_i for p_i in p]
