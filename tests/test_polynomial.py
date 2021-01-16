@@ -9,6 +9,13 @@ from misc_crypto.polynomial.operations import (
     naive_multiply,
     euclidean_division,
     true_division,
+    evaluate,
+)
+from misc_crypto.polynomial.commitments import (
+    commit,
+    prove_single,
+    untrusted_setup,
+    verify_single,
 )
 
 
@@ -101,3 +108,25 @@ def test_euclidean_division():
     assert true_division(a1, b1) == quotient
     with pytest.raises(ValueError):
         true_division(a2, b1)
+
+
+def test_evaluate():
+    p = [F337(c) for c in [1, 3, 3, 1]]
+    x = F337(2)
+    assert evaluate(p, x) == F337(27)
+
+
+def test_srs():
+    backend = BLS12381Backend
+    srs = untrusted_setup(backend, 10)
+    print(srs._s)
+
+    p = [backend.Fr(x) for x in [1, 2, 3, 4]]
+
+    commitment = commit(srs, p)
+
+    z = backend.Fr(5)
+
+    y, proof = prove_single(srs, p, z)
+
+    assert verify_single(backend, srs, commitment, z, y, proof)

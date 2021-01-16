@@ -115,10 +115,11 @@ def euclidean_division(
     # Work with reverse order
     quotient = []
     remainder = list(reversed(dividend))
+    _divisor = list(reversed(divisor))
 
     for _ in range(remainder_degree + 1):
-        m = remainder[0] / divisor[0]
-        affected = [r - m * d for r, d in zip(remainder[1:], divisor[1:])]
+        m = remainder[0] / _divisor[0]
+        affected = [r - m * d for r, d in zip(remainder[1:], _divisor[1:])]
         remainder = affected + remainder[len_divisor:]
         quotient.append(m)
 
@@ -135,3 +136,12 @@ def true_division(
     if not is_zero(remainder):
         raise ValueError("Not divisible  remainder", remainder)
     return quotient
+
+
+def evaluate(p: Sequence[FieldElement], x: FieldElement) -> FieldElement:
+    power = x
+    result = p[0]
+    for coefficient in p[1:]:
+        result += coefficient * power
+        power *= x
+    return result
