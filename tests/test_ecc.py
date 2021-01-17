@@ -1,5 +1,5 @@
 import pytest
-from misc_crypto.ecc import BLS12381Backend, BN254Backend
+from misc_crypto.ecc import BLS12381Backend, BN254Backend, pairing_check
 
 
 @pytest.mark.parametrize("backend", (BLS12381Backend, BN254Backend))
@@ -109,3 +109,7 @@ def test_pairing_composit_check(backend):
     p3 = pairing(G1.multiply(37), G2.multiply(27))
     po3 = pairing(G1.multiply(999), G2)
     assert p3 == po3
+
+    assert pairing_check(
+        backend, G1.multiply(37), G2.multiply(27), G1.multiply(999), G2.neg()
+    )
