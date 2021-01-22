@@ -25,6 +25,9 @@ OPCODES = {
     "shor": 0x18,
     "not": 0x19,
     "byte": 0x1A,
+    "shl": 0x1B,
+    "shr": 0x1C,
+    "sar": 0x1D,
     "kecca": 0x20,
     "sha": 0x20,  # alias of kecca
     "address": 0x30,
