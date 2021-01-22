@@ -44,11 +44,11 @@ def evaluate_on_G1(srs: SRS, p: Sequence[FieldElement]) -> "G1":
     return _sum
 
 
-def evaluate_on_G2(srs: SRS, p: Sequence[FieldElement]) -> "G1":
+def evaluate_on_G2(srs: SRS, p: Sequence[FieldElement]) -> "G2":
     p0, p_rest = p[0], p[1:]
     _sum = srs.G2.multiply(p0)
-    for G1s_i, p_i in zip(srs.G2s, p_rest):
-        _sum = _sum.add(G1s_i.multiply(p_i))
+    for G2s_i, p_i in zip(srs.G2s, p_rest):
+        _sum = _sum.add(G2s_i.multiply(p_i))
     return _sum
 
 
