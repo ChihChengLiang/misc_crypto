@@ -1,4 +1,3 @@
-
 from typing import List, Sequence
 
 
@@ -10,34 +9,34 @@ ROT = [
     [1, 44, 10, 45, 2],
     [62, 6, 43, 15, 61],
     [28, 55, 25, 21, 56],
-    [27, 20, 39, 8, 14]
+    [27, 20, 39, 8, 14],
 ]
 
 ROUND_CONSTANTS = [
     0x0000000000000001,
     0x0000000000008082,
-    0x800000000000808a,
+    0x800000000000808A,
     0x8000000080008000,
-    0x000000000000808b,
+    0x000000000000808B,
     0x0000000080000001,
     0x8000000080008081,
     0x8000000000008009,
-    0x000000000000008a,
+    0x000000000000008A,
     0x0000000000000088,
     0x0000000080008009,
-    0x000000008000000a,
-    0x000000008000808b,
-    0x800000000000008b,
+    0x000000008000000A,
+    0x000000008000808B,
+    0x800000000000008B,
     0x8000000000008089,
     0x8000000000008003,
     0x8000000000008002,
     0x8000000000000080,
-    0x000000000000800a,
-    0x800000008000000a,
+    0x000000000000800A,
+    0x800000008000000A,
     0x8000000080008081,
     0x8000000000008080,
     0x0000000080000001,
-    0x8000000080008008
+    0x8000000080008008,
 ]
 
 
@@ -89,12 +88,15 @@ def store64(a: int) -> List[int]:
 
 
 def keccak_f1600(state: Sequence[Sequence[int]]) -> List[List[int]]:
-    lanes = [[load64(state[8 * (x + 5 * y):8 * (x + 5 * y) + 8]) for y in range(5)] for x in range(5)]
+    lanes = [
+        [load64(state[8 * (x + 5 * y) : 8 * (x + 5 * y) + 8]) for y in range(5)]
+        for x in range(5)
+    ]
     lanes = keccak_function(lanes)
     state = bytearray(200)
     for x in range(5):
         for y in range(5):
-            state[8 * (x + 5 * y):8 * (x + 5 * y) + 8] = store64(lanes[x][y])
+            state[8 * (x + 5 * y) : 8 * (x + 5 * y) + 8] = store64(lanes[x][y])
     return state
 
 
@@ -103,7 +105,7 @@ def keccak_full(
     capacity: int,
     input_bytes: Sequence[bytes],
     delimited_suffix: bytes,
-    output_byte_len: int
+    output_byte_len: int,
 ) -> bytearray:
     """
     from https://github.com/XKCP/XKCP/blob/master/Standalone/CompactFIPS202/Python/CompactFIPS202.py
@@ -158,4 +160,5 @@ def keccak_256(input_bytes: Sequence[bytes]) -> bytearray:
 def test_keccak():
     _input = "abcde".encode("utf8")
     from eth_hash.auto import keccak
+
     assert keccak_256(_input) == keccak(_input)
