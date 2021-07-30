@@ -127,8 +127,6 @@ def sponge_absorb(state: bytearray, input_bytes: bytes) -> bytearray:
             block_size = 0
     # Padding
     state[block_size] ^= DELIMITED_SUFFIX
-    if DELIMITED_SUFFIX & 0x80 != 0 and block_size == RATE_BYTES - 1:
-        state = keccak_f1600(state)
     state[RATE_BYTES - 1] ^= 0x80
     state = keccak_f1600(state)
 
