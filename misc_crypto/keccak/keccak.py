@@ -115,6 +115,7 @@ def keccak_f1600(state: bytearray) -> bytearray:
 
 def sponge_absorb(state: bytearray, input_bytes: bytes) -> bytearray:
     offset = 0
+    block_size = 0
     length = len(input_bytes)
     while offset < length:
         block_size = min(length - offset, RATE_BYTES)
