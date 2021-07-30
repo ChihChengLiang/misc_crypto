@@ -156,5 +156,12 @@ def keccak_256(input_bytes: bytes) -> bytes:
 def test_keccak():
     _input = "abcde".encode("utf8")
     from eth_hash.auto import keccak
+    from random import randbytes, randint
 
+    assert keccak_256(b"") == keccak(b"")
     assert keccak_256(_input) == keccak(_input)
+
+    for _ in range(100):
+        n = randint(0, 600)
+        _input = randbytes(n)
+        assert keccak_256(_input) == keccak(_input)
