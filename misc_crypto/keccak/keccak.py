@@ -52,7 +52,7 @@ RATE_BYTES = WIDTH_BYTES - CAPACITY_BYTES
 DELIMITED_SUFFIX = 0x01
 
 
-def keccak_f(lanes: Sequence[Sequence[int]]) -> List[List[int]]:
+def keccak_f(lanes: List[List[int]]) -> List[List[int]]:
     a = lanes
     for round_constant in ROUND_CONSTANTS:
         a = round_f(a, round_constant)
@@ -67,7 +67,7 @@ def rotate_left(x: int, y: int) -> int:
     return ((x << y) | (x >> (64 - y))) % (1 << 64)
 
 
-def round_f(a: Sequence[Sequence[int]], round_constant: int) -> List[List[int]]:
+def round_f(a: List[List[int]], round_constant: int) -> List[List[int]]:
     assert type(a) == list
     assert type(a[0][0]) == int
     # Theta step
@@ -113,7 +113,7 @@ def keccak_f1600(state: bytearray) -> bytearray:
     return state
 
 
-def sponge_absorb(state: Sequence[int], input_bytes: Sequence[bytes]):
+def sponge_absorb(state: bytearray, input_bytes: bytes) -> bytearray:
     offset = 0
     length = len(input_bytes)
     while offset < length:
@@ -134,8 +134,8 @@ def sponge_absorb(state: Sequence[int], input_bytes: Sequence[bytes]):
     return state
 
 
-def sponge_squeeze(state):
-    output_bytes = []
+def sponge_squeeze(state: bytearray) -> bytes:
+    output_bytes = bytearray()
     length = DIGEST_BYTES
     while length > 0:
         block_size = min(length, RATE_BYTES)
@@ -143,13 +143,11 @@ def sponge_squeeze(state):
         length -= block_size
         if length > 0:
             state = keccak_f1600(state)
-    return bytearray(output_bytes)
+    return bytes(output_bytes)
 
 
-def keccak_256(input_bytes: Sequence[bytes]) -> bytearray:
-
+def keccak_256(input_bytes: bytes) -> bytes:
     state = bytearray([0 for _ in range(WIDTH_BYTES)])
-
     state = sponge_absorb(state, input_bytes)
     output_bytes = sponge_squeeze(state)
     return output_bytes
