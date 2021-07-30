@@ -39,28 +39,41 @@ ROUND_CONSTANTS = [
     0x8000000080008008,
 ]
 
+# width b is 1600 bits
+WIDTH_BYTES = 200
+DIGEST_BYTES = 32
+# capacity c is 512 bits, which is the double of the digest 256 bits
+# See https://github.com/Legrandin/pycryptodome/blob/master/lib/Crypto/Hash/keccak.py#L73
+CAPACITY_BYTES = 64
+# bitrate rate r = b - c is 1088 bits
+RATE_BYTES = WIDTH_BYTES - CAPACITY_BYTES
 
-def keccak_function(lanes: Sequence[Sequence[int]]) -> List[List[int]]:
+# https://github.com/Legrandin/pycryptodome/blob/5dace638b70ac35bb5d9b565f3e75f7869c9d851/lib/Crypto/Hash/keccak.py#L74
+DELIMITED_SUFFIX = 0x01
+
+
+def keccak_f(lanes: Sequence[Sequence[int]]) -> List[List[int]]:
     a = lanes
     for round_constant in ROUND_CONSTANTS:
-        a = round(a, round_constant)
+        a = round_f(a, round_constant)
     return a
 
 
-def rol64(x: int, y: int) -> int:
+def rotate_left(x: int, y: int) -> int:
     """
-    bitwise cyclic shift operation
+    bitwise cyclic shift left operation
+    cyclic shift the input x y bits left
     """
     return ((x << y) | (x >> (64 - y))) % (1 << 64)
 
 
-def round(a: Sequence[Sequence[int]], round_constant: int) -> List[List[int]]:
+def round_f(a: Sequence[Sequence[int]], round_constant: int) -> List[List[int]]:
     assert type(a) == list
     assert type(a[0][0]) == int
     # Theta step
     c = [a[x][0] ^ a[x][1] ^ a[x][2] ^ a[x][3] ^ a[x][4] for x in range(5)]
 
-    d = [c[x - 1] ^ rol64(c[(x + 1) % 5], 1) for x in range(5)]
+    d = [c[x - 1] ^ rotate_left(c[(x + 1) % 5], 1) for x in range(5)]
     for x in range(5):
         for y in range(5):
             a[x][y] ^= d[x]
@@ -69,7 +82,7 @@ def round(a: Sequence[Sequence[int]], round_constant: int) -> List[List[int]]:
     b = [[0 for x in range(5)] for y in range(5)]
     for x in range(5):
         for y in range(5):
-            b[y][(2 * x + 3 * y) % 5] = rol64(a[x][y], ROT[x][y])
+            b[y][(2 * x + 3 * y) % 5] = rotate_left(a[x][y], ROT[x][y])
     # Xi step
     for x in range(5):
         for y in range(5):
@@ -87,12 +100,12 @@ def store64(a: int) -> List[int]:
     return [(a >> (8 * i)) % 256 for i in range(8)]
 
 
-def keccak_f1600(state: Sequence[Sequence[int]]) -> List[List[int]]:
+def keccak_f1600(state: bytearray) -> bytearray:
     lanes = [
         [load64(state[8 * (x + 5 * y) : 8 * (x + 5 * y) + 8]) for y in range(5)]
         for x in range(5)
     ]
-    lanes = keccak_function(lanes)
+    lanes = keccak_f(lanes)
     state = bytearray(200)
     for x in range(5):
         for y in range(5):
@@ -100,61 +113,46 @@ def keccak_f1600(state: Sequence[Sequence[int]]) -> List[List[int]]:
     return state
 
 
-def keccak_full(
-    rate: int,
-    capacity: int,
-    input_bytes: Sequence[bytes],
-    delimited_suffix: bytes,
-    output_byte_len: int,
-) -> bytearray:
-    """
-    from https://github.com/XKCP/XKCP/blob/master/Standalone/CompactFIPS202/Python/CompactFIPS202.py
-    """
-    assert rate + capacity == 1600
-    assert rate % 8 == 0
-    block_size = 0
-    input_offset = 0
-    rate_in_bytes = rate // 8
-    output_bytes = []
-    state = bytearray([0 for i in range(200)])
-    input_offset = 0
-    # Absorb
-    while input_offset < len(input_bytes):
-        block_size = min(len(input_bytes) - input_offset, rate_in_bytes)
+def sponge_absorb(state: Sequence[int], input_bytes: Sequence[bytes]):
+    offset = 0
+    length = len(input_bytes)
+    while offset < length:
+        block_size = min(length - offset, RATE_BYTES)
         for i in range(block_size):
-            state[i] ^= input_bytes[i + input_offset]
-        input_offset += block_size
-        if block_size == rate_in_bytes:
+            state[i] ^= input_bytes[i + offset]
+        offset += block_size
+        if block_size == RATE_BYTES:
             state = keccak_f1600(state)
             block_size = 0
     # Padding
-    state[block_size] ^= delimited_suffix
-    if delimited_suffix & 0x80 != 0 and block_size == rate_in_bytes - 1:
+    state[block_size] ^= DELIMITED_SUFFIX
+    if DELIMITED_SUFFIX & 0x80 != 0 and block_size == RATE_BYTES - 1:
         state = keccak_f1600(state)
-    state[rate_in_bytes - 1] ^= 0x80
+    state[RATE_BYTES - 1] ^= 0x80
     state = keccak_f1600(state)
-    # Squeeze
-    while output_byte_len > 0:
-        block_size = min(output_byte_len, rate_in_bytes)
+
+    return state
+
+
+def sponge_squeeze(state):
+    output_bytes = []
+    length = DIGEST_BYTES
+    while length > 0:
+        block_size = min(length, RATE_BYTES)
         output_bytes += state[0:block_size]
-        output_byte_len -= block_size
-        if output_byte_len > 0:
+        length -= block_size
+        if length > 0:
             state = keccak_f1600(state)
     return bytearray(output_bytes)
 
 
 def keccak_256(input_bytes: Sequence[bytes]) -> bytearray:
-    # https://github.com/ethereum/eth-hash/blob/master/eth_hash/backends/pycryptodome.py#L37
-    # ETH_DIGEST_BITS = 256
-    # digest_bytes = 256 // 8 = 32
-    # https://github.com/Legrandin/pycryptodome/blob/master/lib/Crypto/Hash/keccak.py#L73
-    # capacity_in_bytes = digest_bytes *2 = 64
-    # rate_bits = 1600 - capacity_in_bits = 1600 - 512 = 1088
 
-    # https://github.com/Legrandin/pycryptodome/blob/5dace638b70ac35bb5d9b565f3e75f7869c9d851/lib/Crypto/Hash/keccak.py#L74
-    delimitedSuffix = 0x01
+    state = bytearray([0 for _ in range(WIDTH_BYTES)])
 
-    return keccak_full(1088, 512, input_bytes, delimitedSuffix, 256 // 8)
+    state = sponge_absorb(state, input_bytes)
+    output_bytes = sponge_squeeze(state)
+    return output_bytes
 
 
 def test_keccak():
