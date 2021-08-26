@@ -133,23 +133,10 @@ def sponge_absorb(state: bytearray, input_bytes: bytes) -> bytearray:
     return state
 
 
-def sponge_squeeze(state: bytearray) -> bytes:
-    output_bytes = bytearray()
-    length = DIGEST_BYTES
-    while length > 0:
-        block_size = min(length, RATE_BYTES)
-        output_bytes += state[0:block_size]
-        length -= block_size
-        if length > 0:
-            state = keccak_f1600(state)
-    return bytes(output_bytes)
-
-
 def keccak_256(input_bytes: bytes) -> bytes:
     state = bytearray([0 for _ in range(WIDTH_BYTES)])
     state = sponge_absorb(state, input_bytes)
-    output_bytes = sponge_squeeze(state)
-    return output_bytes
+    return state[:DIGEST_BYTES]
 
 
 def test_keccak():
